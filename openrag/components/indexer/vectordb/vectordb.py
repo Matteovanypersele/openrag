@@ -244,15 +244,17 @@ class MilvusDB(ABCVectorDB):
         """
 
         expr_parts = []
+        filter_params = {}
 
         if partition != ["all"]:
-            expr_parts.append(f"partition in {partition}")
+            expr_parts.append("partition in {partition}")
+            filter_params["partition"] = partition
 
         for key, value in filter.items():
-            expr_parts.append(f"{key} == '{value}'")
+            expr_parts.append(f"{key} == {{value}}")
+            filter_params[value] = str(value)
 
-        # Join all parts with " and " only if there are multiple conditions
-        expr = " and ".join(expr_parts) if expr_parts else ""
+        expr = " and ".join(expr_parts)
 
         SEARCH_PARAMS = [
             {
@@ -277,6 +279,7 @@ class MilvusDB(ABCVectorDB):
                 ranker_params={"k": 100},
                 expr=expr,
                 param=SEARCH_PARAMS,
+                expr_params=filter_params,
             )
         else:
             docs_scores = (
@@ -285,6 +288,7 @@ class MilvusDB(ABCVectorDB):
                     k=top_k,
                     score_threshold=similarity_threshold,
                     expr=expr,
+                    expr_params=filter_params,
                 )
             )
 
@@ -389,7 +393,8 @@ class MilvusDB(ABCVectorDB):
                 return []
 
             # Adjust filter expression based on the type of value
-            filter_expression = f"partition == '{partition}' and file_id == '{file_id}'"
+            filter_expression = "partition == {partition} and file_id == {file_id}"
+            filter_params = {"partition": partition, "file_id": file_id}
 
             # Pagination parameters
             offset = 0
@@ -399,6 +404,7 @@ class MilvusDB(ABCVectorDB):
                 response = self.client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
+                    filter_params=filter_params,
                     output_fields=["_id"],  # Only fetch IDs
                     limit=limit,
                     offset=offset,
@@ -430,7 +436,8 @@ class MilvusDB(ABCVectorDB):
                 return []
 
             # Adjust filter expression based on the type of value
-            filter_expression = f"partition == '{partition}' and file_id == '{file_id}'"
+            filter_expression = "partition == {partition} and file_id == {file_id}"
+            filter_params = {"partition": partition, "file_id": file_id}
 
             # Pagination parameters
             offset = 0
@@ -443,6 +450,7 @@ class MilvusDB(ABCVectorDB):
                 response = self.client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
+                    filter_params=filter_params,
                     limit=limit,
                     offset=offset,
                 )
@@ -566,7 +574,8 @@ class MilvusDB(ABCVectorDB):
         try:
             count = self.client.delete(
                 collection_name=self.collection_name,
-                filter=f"partition == '{partition}'",
+                filter="partition == {partition}",
+                filter_params={"partition": partition}
             )
 
             self.partition_file_manager.delete_partition(partition)
@@ -608,12 +617,14 @@ class MilvusDB(ABCVectorDB):
                 return []
 
             # Create a filter expression for the query
-            filter_expression = f"partition == '{partition}' and file_id in {file_ids}"
+            filter_expression = "partition == {partition} and file_id in {file_ids}"
+            expr_params = {"partition": partition, "file_ids": file_ids}
 
             ids = []
             iterator = self.client.query_iterator(
                 collection_name=self.collection_name,
                 filter=filter_expression,
+                expr_params=expr_params,
                 batch_size=16000,
                 output_fields=["_id"],
             )
@@ -646,7 +657,8 @@ class MilvusDB(ABCVectorDB):
                 return []
 
             # Create a filter expression for the query
-            filter_expression = f"partition == '{partition}'"
+            filter_expression = "partition == {partition}"
+            expr_params = {"partition": partition}
 
             excluded_keys = ["text"]
             if not include_embedding:
@@ -655,7 +667,7 @@ class MilvusDB(ABCVectorDB):
             def prepare_metadata(res: dict):
                 metadata = {}
                 for k, v in res.items():
-                    if not k in excluded_keys:
+                    if k not in excluded_keys:
                         if k == "vector":
                             v = str(np.array(v).flatten().tolist())
                         metadata[k] = v
@@ -665,6 +677,7 @@ class MilvusDB(ABCVectorDB):
             iterator = self.client.query_iterator(
                 collection_name=self.collection_name,
                 filter=filter_expression,
+                expr_params=expr_params,
                 batch_size=16000,
                 output_fields=["*"],
             )
