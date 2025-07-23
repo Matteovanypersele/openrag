@@ -26,6 +26,11 @@ chunk_contextualizer_pmpt = config.prompt.get("chunk_contextualizer_pmpt")
 CHUNK_CONTEXTUALIZER = load_sys_template(prompt_paths / chunk_contextualizer_pmpt)
 
 
+def _get_token_length(llm: ChatOpenAI, documents: list[Document]) -> int:
+    """Calculate the total number of tokens in a list of documents."""
+    return sum(llm.get_num_tokens(doc.page_content) for doc in documents)
+
+
 class BaseChunker(ABC):
     """Base class for document chunkers with built-in contextualization capability."""
 
@@ -305,11 +310,6 @@ class SemanticSplitter(BaseChunker):
         return filtered_chunks
 
 
-def _get_token_length(llm: ChatOpenAI, documents: list[Document]) -> int:
-    """Calculate the total number of tokens in a list of documents."""
-    return sum(llm.get_num_tokens(doc.page_content) for doc in documents)
-
-
 class MarkDownSplitter(BaseChunker):
     def __init__(
         self,
@@ -339,16 +339,39 @@ class MarkDownSplitter(BaseChunker):
             length_function=lambda x: self.llm.get_num_tokens(x),
         )
 
+    def _split_list_of_docs(
+        self, docs: list[Document], token_max: int
+    ) -> list[list[Document]]:
+        doc_n_tokens = map(
+            lambda doc: _get_token_length(llm=self.llm, documents=[doc]), docs
+        )
+
+        # regroup subsequent chunks based if the total length is less than token_max
+        grouped_docs = []
+        current_group = []
+        current_length = 0
+
+        for doc, n_tokens in zip(docs, doc_n_tokens):
+            if current_length + n_tokens > token_max:
+                if current_group:
+                    grouped_docs.append(current_group)
+                current_group = [doc]
+                current_length = n_tokens
+            else:
+                current_group.append(doc)
+                current_length += n_tokens
+
+        if current_group:
+            grouped_docs.append(current_group)
+
+        return grouped_docs
+
     def split_text(self, text: str) -> list[str]:
         # split the text into chunks based on headers
         splits: list[Document] = self.md_header_splitter.split_text(text)
 
         # regrouping chunks based on token length
-        docs_2_merge = split_list_of_docs(
-            docs=splits,
-            length_func=lambda x: _get_token_length(llm=self.llm, documents=x),
-            token_max=self.chunk_size,
-        )
+        docs_2_merge = self._split_list_of_docs(docs=splits, token_max=self.chunk_size)
 
         splits = []
         for doc_list in docs_2_merge:

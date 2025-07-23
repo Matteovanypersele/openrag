@@ -10,11 +10,13 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    Index,
     create_engine,
 )
 from sqlalchemy.orm import (
     declarative_base,
     relationship,
+    selectinload,
     sessionmaker,
 )
 from sqlalchemy_utils import (
@@ -48,17 +50,23 @@ class File(Base):
     __tablename__ = "files"
 
     id = Column(Integer, primary_key=True)
-    file_id = Column(String, nullable=False)
+    file_id = Column(
+        String, nullable=False, index=True
+    )  # Added index for file_id lookups
     # Foreign key points directly to the partition string
-    partition_name = Column(String, ForeignKey("partitions.partition"), nullable=False)
+    partition_name = Column(
+        String, ForeignKey("partitions.partition"), nullable=False, index=True
+    )  # Added index
     file_metadata = Column(JSON, nullable=True, default={})
 
     # relationship to the Partition object
     partition = relationship("Partition", back_populates="files")
 
-    # Enforce uniqueness of (file_id, partition_name)
+    # Enforce uniqueness of (file_id, partition_name) - this also creates an index
     __table_args__ = (
         UniqueConstraint("file_id", "partition_name", name="uix_file_id_partition"),
+        # Additional composite index for common query patterns (partition first for better selectivity)
+        Index("ix_partition_file", "partition_name", "file_id"),
     )
 
     def to_dict(self):
@@ -75,8 +83,12 @@ class Partition(Base):
     __tablename__ = "partitions"
 
     id = Column(Integer, primary_key=True)
-    partition = Column(String, unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    partition = Column(
+        String, unique=True, nullable=False, index=True
+    )  # Index already exists due to unique constraint
+    created_at = Column(
+        DateTime, default=datetime.now, nullable=False, index=True
+    )  # Added index for time-based queries
     files = relationship(
         "File", back_populates="partition", cascade="all, delete-orphan"
     )
@@ -105,15 +117,19 @@ class PartitionFileManager:
         self.logger = logger
 
     def get_partition(self, partition: str):
-        """Retrieve a partition by its key"""
+        """Retrieve a partition by its key - Optimized with selectinload"""
         log = self.logger.bind(partition=partition)
         with self.Session() as session:
             log.debug("Fetching partition")
+            # Use selectinload to avoid N+1 queries when accessing files
             partition_obj = (
-                session.query(Partition).filter_by(partition=partition).first()
+                session.query(Partition)
+                .options(selectinload(Partition.files))
+                .filter_by(partition=partition)
+                .first()
             )
             if partition_obj:
-                log.info(f"Partition `{partition}` found")
+                log.info(f"Partition not found")
                 return partition_obj.to_dict()
             else:
                 log.warning("No partition found")
@@ -122,24 +138,23 @@ class PartitionFileManager:
     def add_file_to_partition(
         self, file_id: str, partition: str, file_metadata: Optional[Dict] = None
     ):
-        """Add a file to a partition"""
+        """Add a file to a partition - Optimized with direct partition lookup"""
         log = self.logger.bind(file_id=file_id, partition=partition)
         with self.Session() as session:
             try:
-                # Check if file already exists in this partition
                 existing_file = (
-                    session.query(File)
-                    .join(Partition)
-                    .filter(File.file_id == file_id, Partition.partition == partition)
+                    session.query(File.id)  # Only select id, not entire object
+                    .filter(File.file_id == file_id, File.partition_name == partition)
                     .first()
                 )
                 if existing_file:
                     log.warning("File already exists")
                     return False
 
-                # Ensure partition exists
                 partition_obj = (
-                    session.query(Partition).filter_by(partition=partition).first()
+                    session.query(Partition)
+                    .filter(Partition.partition == partition)
+                    .first()
                 )
                 if not partition_obj:
                     partition_obj = Partition(partition=partition)
@@ -149,7 +164,7 @@ class PartitionFileManager:
                 # Add file to partition
                 file = File(
                     file_id=file_id,
-                    partition_name=partition_obj.partition,
+                    partition_name=partition,  # Use string directly
                     file_metadata=file_metadata,
                 )
 
@@ -163,15 +178,14 @@ class PartitionFileManager:
                 raise
 
     def remove_file_from_partition(self, file_id: str, partition: str):
-        """Remove a file from its partition"""
+        """Remove a file from its partition - Optimized without join"""
         log = self.logger.bind(file_id=file_id, partition=partition)
         with self.Session() as session:
             try:
-                # Find the file using a join with proper filtering
+                # Direct filter without join (uses composite index)
                 file = (
                     session.query(File)
-                    .join(Partition)
-                    .filter(File.file_id == file_id, Partition.partition == partition)
+                    .filter(File.file_id == file_id, File.partition_name == partition)
                     .first()
                 )
                 if file:
@@ -179,14 +193,22 @@ class PartitionFileManager:
                     session.commit()
                     log.info(f"Removed file {file_id} from partition {partition}")
 
-                    # Check if partition is now empty
-                    partition_obj = (
-                        session.query(Partition).filter_by(partition=partition).first()
+                    # Use count query instead of loading all files
+                    file_count = (
+                        session.query(File)
+                        .filter(File.partition_name == partition)
+                        .count()
                     )
-                    if partition_obj and len(partition_obj.files) == 0:
-                        session.delete(partition_obj)
-                        session.commit()
-                        log.info("Deleted empty partition")
+                    if file_count == 0:
+                        partition_obj = (
+                            session.query(Partition)
+                            .filter(Partition.partition == partition)
+                            .first()
+                        )
+                        if partition_obj:
+                            session.delete(partition_obj)
+                            session.commit()
+                            log.info("Deleted empty partition")
 
                     return True
                 log.warning("File not found in partition")
@@ -199,9 +221,11 @@ class PartitionFileManager:
     def delete_partition(self, partition: str):
         """Delete a partition and all its files"""
         with self.Session() as session:
-            partition = session.query(Partition).filter_by(partition=partition).first()
-            if partition:
-                session.delete(partition)  # Will delete all files due to cascade
+            partition_obj = (
+                session.query(Partition).filter_by(partition=partition).first()
+            )
+            if partition_obj:
+                session.delete(partition_obj)  # Will delete all files due to cascade
                 session.commit()
                 self.logger.info("Deleted partition", partition=partition)
                 return True
@@ -210,20 +234,18 @@ class PartitionFileManager:
             return False
 
     def list_partitions(self, **kwargs):
-        """List all existing partitions"""
+        """List all existing partitions - Optimized with selectinload"""
         with self.Session() as session:
-            partitions = session.query(Partition).all()
+            partitions = (
+                session.query(Partition).options(selectinload(Partition.files)).all()
+            )
             return [partition.to_dict(**kwargs) for partition in partitions]
 
     def get_partition_file_count(self, partition: str):
-        """Get the count of files in a partition"""
+        """Get the count of files in a partition - Optimized with direct count"""
         with self.Session() as session:
-            partition_obj = (
-                session.query(Partition).filter_by(partition=partition).first()
-            )
-            if not partition_obj:
-                return 0
-            return len(partition_obj.files)  # Or use a count query if you prefer
+            # Optimized: Direct count query instead of loading partition and files
+            return session.query(File).filter(File.partition_name == partition).count()
 
     def get_total_file_count(self):
         """Get the total count of files across all partitions"""
@@ -231,21 +253,21 @@ class PartitionFileManager:
             return session.query(File).count()
 
     def partition_exists(self, partition: str):
-        """Check if a partition exists by its key"""
+        """Check if a partition exists by its key - Optimized with exists()"""
         with self.Session() as session:
-            return session.query(Partition).filter_by(partition=partition).count() > 0
+            # Optimized: Use exists() for better performance
+            return session.query(
+                session.query(Partition)
+                .filter(Partition.partition == partition)
+                .exists()
+            ).scalar()
 
     def file_exists_in_partition(self, file_id: str, partition: str):
-        """Check if a file exists in a specific partition"""
+        """Check if a file exists in a specific partition - Optimized without join"""
         with self.Session() as session:
-            # Use a join to correctly filter by both file_id and partition string
-            return (
+            # Optimized: Direct filter without join, use exists() for better performance
+            return session.query(
                 session.query(File)
-                .join(Partition)  # Join the File and Partition tables
-                .filter(
-                    File.file_id == file_id,
-                    Partition.partition == partition,  # Filter on the partition string
-                )
-                .count()
-                > 0
-            )
+                .filter(File.file_id == file_id, File.partition_name == partition)
+                .exists()
+            ).scalar()
