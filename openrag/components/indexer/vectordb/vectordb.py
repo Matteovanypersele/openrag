@@ -232,27 +232,6 @@ class MilvusDB(ABCVectorDB):
 
         Returns:
             (str, dict): the template expression and its parameter dict.
-        
-        Example:
-        >>> partition = ["bob.localhost"]
-        >>> filter = dict(file_id="a3b2c1", custom_param=314)
-        >>> expr, params = MilvusDB._build_expr_template_and_params(partition, filter)
-        >>> expr
-        'partition in {partition} and file_id == {file_id} and custom_param == {custom_param}'
-
-        >>> params # Note how parameter values are not converted to str
-        {'partition': ['bob.localhost'], 'file_id': 'a3b2c1', 'custom_param': 314}
-
-        >>> # If there is no filter, the search is run on every document
-        >>> partition = ["all"]
-        >>> filter = dict()
-        >>> expr, params = MilvusDB._build_expr_template_and_params(partition, filter)
-        >>> expr
-        ''
-
-        >>> params
-        {}
-
         """
         assert isinstance(partition, list), "`partition` must be a list of partition names"
 
