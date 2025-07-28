@@ -23,6 +23,7 @@ if torch.cuda.is_available():
 else:  # On CPU
     MARKER_NUM_GPUS = 0
 
+
 @ray.remote(num_gpus=MARKER_NUM_GPUS)
 class MarkerWorker:
     def __init__(self):
@@ -132,7 +133,6 @@ class MarkerWorker:
                 self.logger.exception(
                     "MarkerWorker child process timed out", path=file_path
                 )
-                self.setup_mp()
                 raise
             except Exception:
                 self.logger.exception(

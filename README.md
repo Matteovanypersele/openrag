@@ -218,7 +218,6 @@ RAY_NUM_GPUS=0.1
 RAY_POOL_SIZE=1 # increment if you a cluster of machines
 RAY_MAX_TASKS_PER_WORKER=6 # Number of tasks per serializer instance
 RAY_DASHBOARD_PORT=8265
-RAY_RUNTIME_ENV_HOOK=ray._private.runtime_env.uv_runtime_env_hook.hook
 RAY_ENABLE_UV_RUN_RUNTIME_ENV=0 # critical with the newest version of UV
 
 

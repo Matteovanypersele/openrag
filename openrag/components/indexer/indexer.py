@@ -118,8 +118,6 @@ class Indexer:
         log = self.logger.bind(file_id=file_id, partition=partition, task_id=task_id)
         log.info("Queued file for indexing.")
         try:
-            await self.task_state_manager.set_state.remote(task_id, "QUEUED")
-
             # Set task details
             user_metadata = {
                 k: v for k, v in metadata.items() if k not in {"file_id", "source"}

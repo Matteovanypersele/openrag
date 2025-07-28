@@ -44,6 +44,8 @@ def get_vectordb() -> ABCVectorDB:
     return get_or_create_actor("Vectordb", MilvusDB)
 
 
+task_state_manager = get_task_state_manager()
+serializer_queue = get_serializer_queue()
 vectordb = get_vectordb()
 indexer = get_indexer()
 marker_pool = get_marker_pool()

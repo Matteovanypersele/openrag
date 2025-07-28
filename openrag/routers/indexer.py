@@ -3,13 +3,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-import ray
-
 from config.config import load_config
 from fastapi import (
     APIRouter,
     Depends,
-    File,
     Form,
     HTTPException,
     Request,
@@ -96,6 +93,7 @@ async def validate_file_format(
             detail=details,
         )
     return file
+
 
 def _human_readable_size(size_bytes: int) -> str:
     """Convert bytes to a human-readable format (e.g., '2.4 MB')."""
@@ -193,6 +191,7 @@ async def add_file(
         task = indexer.add_file.remote(
             path=file_path, metadata=metadata, partition=partition
         )
+        await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -239,12 +238,11 @@ async def put_file(
     log = logger.bind(file_id=file_id, partition=partition, filename=file.filename)
 
     if not await vectordb.file_exists.remote(file_id, partition):
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"File '{file_id}' not found in partition '{partition}'.",
         )
-        
+
     try:
         await indexer.delete_file.remote(file_id, partition)
     except Exception:
@@ -252,7 +250,6 @@ async def put_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete existing file.",
         )
-
     save_dir = Path(DATA_DIR)
     save_dir.mkdir(parents=True, exist_ok=True)
     file_path = save_dir / Path(file.filename).name
@@ -278,6 +275,7 @@ async def put_file(
         task = indexer.add_file.remote(
             path=file_path, metadata=metadata, partition=partition
         )
+        await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
