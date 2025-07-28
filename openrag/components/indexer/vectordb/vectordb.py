@@ -53,7 +53,7 @@ class BaseVectorDB(ABC):
         pass
 
     @abstractmethod
-    async def async_multy_query_search(
+    async def async_multi_query_search(
         self, partition: list[str], queries: list[str], top_k_per_query: int = 5
     ) -> list[Document]:
         pass
@@ -360,7 +360,7 @@ class MilvusDB(BaseVectorDB):
             )
             raise
 
-    async def async_multy_query_search(
+    async def async_multi_query_search(
         self,
         queries: list[str],
         top_k_per_query: int = 5,
