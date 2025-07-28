@@ -142,8 +142,7 @@ if WITH_CHAINLIT_UI:
     )  # cause chainlit uses openai api endpoints
 
 if __name__ == "__main__":
-    ENABLE_RAY_SERVE = config.ray.serve.enable
-    if ENABLE_RAY_SERVE:
+    if config.ray.serve.enable:
         from ray import serve
 
         @serve.deployment(num_replicas=config.ray.serve.num_replicas)
