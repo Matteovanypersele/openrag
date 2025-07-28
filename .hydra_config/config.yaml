@@ -37,7 +37,7 @@ vectordb:
   port: ${oc.env:VDB_iPORT, 19530}
   connector_name: ${oc.env:VDB_CONNECTOR_NAME, milvus}
   collection_name: ${oc.env:VDB_COLLECTION_NAME, vdb_test} 
-  hybrid_mode: true
+  hybrid_search: true
   enable: true
 
 rdb:

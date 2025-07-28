@@ -150,7 +150,6 @@ async def openai_chat_completion(
 
     try:
         partition = await __get_partition_name(model_name, app_state)
-
     except Exception as e:
         log.warning(f"Invalid model or partition: {e}")
         raise

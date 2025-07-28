@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from omegaconf import OmegaConf
 
-from .indexer import ABCVectorDB
+from .indexer import BaseVectorDB
 from .utils import load_sys_template
 
 CRITERIAS = ["similarity"]
@@ -28,7 +28,7 @@ class ABCRetriever(ABC):
 
     @abstractmethod
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         pass
 
@@ -57,7 +57,7 @@ class BaseRetriever(ABCRetriever):
         self.logger = logger
 
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         chunks = await db.async_search.remote(
             query=query,
@@ -127,7 +127,7 @@ class MultiQueryRetriever(BaseRetriever):
             raise KeyError(f"An Error has occured: {e}")
 
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         # generate different perspectives of the query
         generated_queries = await self.generate_queries.ainvoke(
@@ -176,7 +176,7 @@ class HyDeRetriever(BaseRetriever):
         return hyde_document
 
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         hyde = await self.get_hyde(query)
         queries = [hyde]
