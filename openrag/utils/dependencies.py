@@ -1,6 +1,6 @@
 import ray
 import ray.actor
-from components import ABCVectorDB
+from components import BaseVectorDB
 from components.indexer.indexer import Indexer, TaskStateManager
 from components.indexer.loaders.pdf_loaders.marker import MarkerPool
 from components.indexer.loaders.pdf_loaders.docling2 import DoclingPool
@@ -45,7 +45,7 @@ def get_indexer():
     return get_or_create_actor("Indexer", Indexer)
 
 
-def get_vectordb() -> ABCVectorDB:
+def get_vectordb() -> BaseVectorDB:
     vectordb_cls = ConnectorFactory().get_vectordb_cls()
     return get_or_create_actor("Vectordb", vectordb_cls)
 
