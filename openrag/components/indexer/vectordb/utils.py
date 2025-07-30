@@ -97,13 +97,11 @@ class Partition(Base):
         d = {
             "partition": self.partition,
             "created_at": self.created_at.isoformat(),
-            "files": self.files,
-            "file_count": len(self.files),  # Count of files in this partition
         }
         return d
 
     def __repr__(self):
-        return f"<Partition(key='{self.partition}', created_at='{self.created_at}', file_count={len(self.files)})>"
+        return f"<Partition(key='{self.partition}', created_at='{self.created_at}')>"
 
 
 class PartitionFileManager:
@@ -116,24 +114,37 @@ class PartitionFileManager:
         self.Session = sessionmaker(bind=self.engine)
         self.logger = logger
 
-    def get_partition(self, partition: str):
-        """Retrieve a partition by its key - Optimized with selectinload"""
+    def list_partition_files(self, partition: str, limit: Optional[int] = None):
+        """List files in a partition with optional limit - Optimized by querying File table directly"""
         log = self.logger.bind(partition=partition)
         with self.Session() as session:
-            log.debug("Fetching partition")
-            # Use selectinload to avoid N+1 queries when accessing files
-            partition_obj = (
-                session.query(Partition)
-                .options(selectinload(Partition.files))
-                .filter_by(partition=partition)
-                .first()
-            )
-            if partition_obj:
-                log.info(f"Partition not found")
-                return partition_obj.to_dict()
-            else:
-                log.warning("No partition found")
+            log.debug("Listing partition files")
+
+            # Query files directly - if partition doesn't exist, files will be empty
+            files_query = session.query(File).filter(File.partition_name == partition)
+            if limit is not None:
+                files_query = files_query.limit(limit)
+
+            files = files_query.all()
+
+            # If no files found
+            if not files:
+                log.warning("Partition doesn't exist or has no files")
                 return {}
+
+            # Get total file count and partition info
+            partition_obj = (
+                session.query(Partition).filter_by(partition=partition).first()
+            )
+
+            result = {
+                "partition": partition_obj.partition,
+                "created_at": partition_obj.created_at.isoformat(),
+                "files": [file.to_dict() for file in files],
+            }
+
+            log.info(f"Listed {len(files)} files from partition")
+            return result
 
     def add_file_to_partition(
         self, file_id: str, partition: str, file_metadata: Optional[Dict] = None
@@ -233,13 +244,13 @@ class PartitionFileManager:
                 self.logger.info("Partition does not exist", partition=partition)
             return False
 
-    def list_partitions(self, **kwargs):
+    def list_partitions(self):
         """List all existing partitions - Optimized with selectinload"""
         with self.Session() as session:
             partitions = (
                 session.query(Partition).options(selectinload(Partition.files)).all()
             )
-            return [partition.to_dict(**kwargs) for partition in partitions]
+            return [partition.to_dict() for partition in partitions]
 
     def get_partition_file_count(self, partition: str):
         """Get the count of files in a partition - Optimized with direct count"""

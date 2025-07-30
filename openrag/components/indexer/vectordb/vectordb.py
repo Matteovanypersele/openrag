@@ -86,11 +86,11 @@ class BaseVectorDB(ABC):
         pass
 
     @abstractmethod
-    def get_partition(self, partition: str):
+    def list_partition_files(self, partition: str, limit: Optional[int] = None):
         pass
 
     @abstractmethod
-    def list_partitions(self, **kwargs):
+    def list_partitions(self):
         pass
 
 
@@ -148,12 +148,13 @@ class MilvusDB(BaseVectorDB):
 
         self.logger = self.logger.bind(collection=name, database="Milvus")
 
+        index_params = self._create_index()
+
         if self._client.has_collection(name):
             self.logger.warning(f"Collection `{name}` already exists. Loading it.")
         else:
             self.logger.info("Creating empty collection")
             schema = self._create_schema()
-            index_params = self._create_index()
             consistency_level = "Strong"
             try:
                 self._client.create_collection(
@@ -171,6 +172,8 @@ class MilvusDB(BaseVectorDB):
 
         try:
             self._client.load_collection(name)
+            # self._client.create_index(collection_name=name, index_params=index_params)
+
         except MilvusException as e:
             self.logger.exception(f"Failed to load collection `{name}`", error=str(e))
             raise e
@@ -258,12 +261,12 @@ class MilvusDB(BaseVectorDB):
         index_params.add_index(
             field_name="file_id",
             index_type="INVERTED",
+            index_name="file_id_idx",
         )
 
         # ADD index for partition field
         index_params.add_index(
-            field_name="partition",
-            index_type="INVERTED",
+            field_name="partition", index_type="INVERTED", index_name="partition_idx"
         )
 
         # Add index for vector field
@@ -639,10 +642,10 @@ class MilvusDB(BaseVectorDB):
             )
             return False
 
-    def get_partition(self, partition: str):
+    def list_partition_files(self, partition: str, limit: Optional[int] = None):
         try:
-            partition_dict = self.partition_file_manager.get_partition(
-                partition=partition
+            partition_dict = self.partition_file_manager.list_partition_files(
+                partition=partition, limit=limit
             )
             return partition_dict
 
@@ -650,9 +653,9 @@ class MilvusDB(BaseVectorDB):
             self.logger.exception("Failed get this partition.", partition=partition)
             raise
 
-    def list_partitions(self, **kwargs):
+    def list_partitions(self):
         try:
-            return self.partition_file_manager.list_partitions(**kwargs)
+            return self.partition_file_manager.list_partitions()
         except Exception as e:
             self.logger.exception(f"Failed to list partitions: {e}")
             raise
@@ -676,12 +679,11 @@ class MilvusDB(BaseVectorDB):
             )
 
             self.partition_file_manager.delete_partition(partition)
-
             log.info("Deleted points from partition", count=count.get("delete_count"))
 
             return True
-        except Exception:
-            log.exception("Failed to delete partition")
+        except Exception as e:
+            log.exception("Failed to delete partition", error=str(e))
             return False
 
     def partition_exists(self, partition: str):
@@ -691,7 +693,6 @@ class MilvusDB(BaseVectorDB):
         log = self.logger.bind(partition=partition)
         try:
             return self.partition_file_manager.partition_exists(partition=partition)
-
         except Exception as e:
             log.exception("Partition existence check failed.", error=str(e))
             return False

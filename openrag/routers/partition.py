@@ -12,13 +12,8 @@ vectordb = get_vectordb()
 
 @router.get("/")
 async def list_existant_partitions():
-    def pop_files(partition):
-        partition.pop("files")
-        return partition
-
     try:
         partitions = await vectordb.list_partitions.remote()
-        partitions = list(map(pop_files, partitions))
         logger.debug(
             "Returned list of existing partitions.", partition_count=len(partitions)
         )
@@ -56,10 +51,7 @@ async def delete_partition(partition: str):
 
 
 @router.get("/{partition}")
-async def list_files(
-    request: Request,
-    partition: str,
-):
+async def list_files(request: Request, partition: str, limit: int | None = None):
     log = logger.bind(partition=partition)
 
     if not await vectordb.partition_exists.remote(partition):
@@ -70,22 +62,23 @@ async def list_files(
         )
 
     try:
-        partition_dict = await vectordb.get_partition.remote(partition=partition)
+        partition_dict = await vectordb.list_partition_files.remote(
+            partition=partition, limit=limit
+        )
         log.debug(
             "Listed files in partition", file_count=len(partition_dict.get("files", []))
         )
     except ValueError as e:
         log.warning(f"Invalid partition value: {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
+    except Exception as e:
         log.exception("Failed to list files in partition")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to list files",
+            detail=f"Failed to list files: {str(e)}",
         )
 
-    def process_file(file_obj):
-        file_dict = file_obj.to_dict()
+    def process_file(file_dict):
         return {
             "link": str(
                 request.url_for(
