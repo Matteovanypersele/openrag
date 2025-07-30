@@ -115,11 +115,12 @@ def format_context(docs: list[Document]) -> str:
 
     context = "Extracted documents:\n"
     for i, doc in enumerate(docs, start=1):
-        doc_id = f"[doc_{i}]"
-        document = f"""
-        *source*: {doc_id}
-        content: \n{doc.page_content.strip()}\n
-        """
+        # doc_id = f"[doc_{i}]"
+        # document = f"""
+        # *source*: {doc_id}
+        # content: \n{doc.page_content.strip()}\n
+        # """
+        document = f"""content: \n{doc.page_content.strip()}\n"""
         context += document
         context += "-" * 40 + "\n\n"
 
