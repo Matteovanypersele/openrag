@@ -9,7 +9,6 @@ env_vars = dotenv_values(SHARED_ENV) if SHARED_ENV else {}
 env_vars["PYTHONPATH"] = "/app/openrag"
 
 
-
 ray.init(dashboard_host="0.0.0.0")
 
 
@@ -19,7 +18,6 @@ from pathlib import Path
 from typing import Optional
 
 import uvicorn
-from components import RagPipeline
 from config import load_config
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,16 +29,11 @@ from routers.openai import router as openai_router
 from routers.partition import router as partition_router
 from routers.queue import router as queue_router
 from routers.search import router as search_router
-from utils.dependencies import get_vectordb
 from utils.logger import get_logger
 
 logger = get_logger()
 config = load_config()
 DATA_DIR = Path(config.paths.data_dir)
-
-vectordb = get_vectordb()
-
-ragPipe = RagPipeline(config=config, vectordb=vectordb, logger=logger)
 
 
 class Tags(Enum):
@@ -56,8 +49,6 @@ class Tags(Enum):
 class AppState:
     def __init__(self, config):
         self.config = config
-        self.ragpipe = ragPipe
-        self.vectordb = vectordb
         self.data_dir = Path(config.paths.data_dir)
 
 
@@ -151,4 +142,20 @@ if WITH_CHAINLIT_UI:
     )  # cause chainlit uses openai api endpoints
 
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="0.0.0.0", port=8080, reload=True, proxy_headers=True)
+    if config.ray.serve.enable:
+        from ray import serve
+
+        @serve.deployment(num_replicas=config.ray.serve.num_replicas)
+        @serve.ingress(app)
+        class OpenRagAPI:
+            pass
+
+        serve.start(
+            http_options={"host": config.ray.serve.host, "port": config.ray.serve.port}
+        )
+        serve.run(OpenRagAPI.bind(), route_prefix="/", blocking=True)
+
+    else:
+        uvicorn.run(
+            "api:app", host="0.0.0.0", port=8080, reload=True, proxy_headers=True
+        )

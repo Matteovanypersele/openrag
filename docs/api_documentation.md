@@ -16,6 +16,27 @@ For OpenAI-compatible endpoints, `AUTH_TOKEN` serves as the `api_key` parameter,
 
 ---
 
+## 📡 API Serving Modes
+This API can be served using **Uvicorn** (default) or **Ray Serve** for distributed deployments.
+
+By default, the backend uses `uvicorn` to serve the FastAPI app.
+
+To enable **Ray Serve**, set the following environment variable:
+
+```
+ENABLE_RAY_SERVE=true
+```
+
+Additional optional environment variables for configuring Ray Serve:
+
+```
+RAY_SERVE_NUM_REPLICAS=1             # Number of deployment replicas
+RAY_SERVE_HOST=0.0.0.0               # Host address for Ray Serve HTTP proxy
+RAY_SERVE_PORT=8080                  # Port for Ray Serve HTTP proxy
+```
+
+When using Ray Serve with a **remote cluster**, the HTTP server will be started on the **head node** of the cluster.
+
 ## 🚀 API Endpoints
 ### ℹ️ System Health
 Verify server status and availability.

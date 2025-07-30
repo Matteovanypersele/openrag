@@ -129,3 +129,8 @@ ray:
       insert: ${oc.decode:${oc.env:INDEXER_INSERT_CONCURRENCY, 1}}
   semaphore:
     concurrency: ${oc.decode:${oc.env:RAY_SEMAPHORE_CONCURRENCY, 100000}}
+  serve:
+    enable: ${oc.decode:${oc.env:ENABLE_RAY_SERVE, false}}
+    num_replicas: ${oc.decode:${oc.env:RAY_SERVE_NUM_REPLICAS, 1}}
+    host: ${oc.env:RAY_SERVE_HOST, 0.0.0.0}
+    port: ${oc.env:RAY_SERVE_PORT, 8080}
