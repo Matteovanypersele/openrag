@@ -172,7 +172,6 @@ class MilvusDB(BaseVectorDB):
 
         try:
             self._client.load_collection(name)
-            # self._client.create_index(collection_name=name, index_params=index_params)
 
         except MilvusException as e:
             self.logger.exception(f"Failed to load collection `{name}`", error=str(e))
