@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from langchain.chains.combine_documents.reduce import collapse_docs
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
@@ -19,8 +18,7 @@ from tqdm.asyncio import tqdm
 from utils.logger import get_logger
 
 from ...utils import llmSemaphore, load_config, load_sys_template
-from .utills import _get_token_length, split_md_elements, combine_chunks
-from operator import attrgetter
+from .utills import split_md_elements, combine_chunks, add_overlap
 
 
 logger = get_logger()
@@ -176,23 +174,6 @@ class RecursiveSplitter(BaseChunker):
             else len(x),
         )
 
-    def _add_overlap(self, chunks: list[tuple[str, str]]) -> list[str]:
-        overlap_chars = int(self.chunk_overlap * 4)  # Assuming 4 characters per token
-        chunk_l = []
-        for i, (chunk_type, chunk) in enumerate(chunks):
-            if chunk_type != "text" and i > 0:
-                prev_chunk_type, prev_chunk = chunks[i - 1]
-                if prev_chunk_type == "text":
-                    # Add overlap from previous text chunk
-                    overlap = (
-                        prev_chunk[-overlap_chars:]
-                        if len(prev_chunk) > overlap_chars
-                        else prev_chunk
-                    )
-                    chunk = f"{overlap}\n{chunk}"
-            chunk_l.append((chunk_type, chunk))
-        return chunk_l
-
     async def split_document(self, doc: Document, task_id: str = None):
         metadata = doc.metadata
         log = logger.bind(
@@ -208,7 +189,13 @@ class RecursiveSplitter(BaseChunker):
         splits = split_md_elements(all_content)
 
         # Add overlap to image and table chunks
-        splits = self._add_overlap(splits)
+        splits = add_overlap(
+            chunks=splits,
+            target_chunk_types=["table", "image"],
+            add_before=True,
+            add_after=True,
+            chunk_overlap=self.chunk_overlap,
+        )
 
         # only split text elements into chunks
         chunks = []
@@ -239,7 +226,7 @@ class RecursiveSplitter(BaseChunker):
             end_page = page_info["end_page"]
             prev_page_num = end_page
 
-            if len(chunk.strip()) > 3:
+            if len(chunk.strip()) > 10:
                 filtered_chunks.append(
                     Document(
                         page_content=chunk_w_context,
@@ -264,7 +251,7 @@ class SemanticSplitter(BaseChunker):
 
         from langchain_experimental.text_splitter import SemanticChunker
 
-        self.splitter = SemanticChunker(
+        self.semantic_splitter = SemanticChunker(
             embeddings=embeddings,
             buffer_size=1,
             breakpoint_threshold_type="percentile",
@@ -272,24 +259,25 @@ class SemanticSplitter(BaseChunker):
             min_chunk_size=min_chunk_size,
         )
 
+        self.recursive_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=512,
+            chunk_overlap=100,
+            length_function=lambda x: self.llm.get_num_tokens(x)
+            if self.llm
+            else len(x),
+        )
+
         self.chunk_size = 512
         self.chunk_overlap = 100
 
-    def _add_overlap(self, chunks: list[tuple[str, str]]) -> list[str]:
-        overlap_chars = int(self.chunk_overlap * 4)  # Assuming 4 characters per token
-        chunk_l = []
-        for i, (chunk_type, chunk) in enumerate(chunks):
-            prev_chunk_type, prev_chunk = chunks[i - 1]
-            if prev_chunk_type == "text":
-                # Add overlap from previous text chunk
-                overlap = (
-                    prev_chunk[-overlap_chars:]
-                    if len(prev_chunk) > overlap_chars
-                    else prev_chunk
-                )
-                chunk = f"{overlap}\n{chunk}"
-            chunk_l.append((chunk_type, chunk))
-        return chunk_l
+    def split_text(self, text: str):
+        # split sematically meaningful chunks
+        splits = self.semantic_splitter.split_text(text)
+
+        # apply recursive character splitter to each chunk (this would add overlapping between text chunks)
+        splits_l = [self.recursive_splitter.split_text(s) for s in splits]
+        splits = sum(splits_l, [])
+        return splits
 
     async def split_document(self, doc: Document, task_id: str = None):
         metadata = doc.metadata
@@ -305,16 +293,27 @@ class SemanticSplitter(BaseChunker):
         all_content = doc.page_content.strip()
         splits = split_md_elements(all_content)
 
-        # Add overlap to text, image and table chunks (Here subsequent 'text' chunks from semantic chunking are not overlapped)
-        splits = self._add_overlap(splits)
+        # Add overlap image and table chunks
+        splits = add_overlap(
+            chunks=splits,
+            target_chunk_types=["table", "image"],
+            add_before=True,
+            add_after=True,
+            chunk_overlap=self.chunk_overlap,
+        )
 
         # only split text elements into chunks
         chunks = []
         for chunk_type, content in splits:
             if chunk_type == "text":
-                chunks.extend(self.splitter.split_text(content))
+                chunks.extend(self.split_text(content))
             else:
                 chunks.append(content)
+
+        # regrouping chunks based on token length
+        chunks = combine_chunks(
+            chunks=chunks, llm=self.llm, chunk_max_size=self.chunk_size
+        )
 
         # regrouping chunks based on token length
         chunks = combine_chunks(
@@ -336,7 +335,7 @@ class SemanticSplitter(BaseChunker):
             end_page = page_info["end_page"]
             prev_page_num = end_page
 
-            if len(chunk.strip()) > 3:
+            if len(chunk.strip()) > 10:
                 filtered_chunks.append(
                     Document(
                         page_content=chunk_w_context,
@@ -357,7 +356,7 @@ class MarkDownSplitter(BaseChunker):
         headers_to_split_on = [
             ("#", "Header 1"),
             ("##", "Header 2"),
-            ("###", "Header 3"),
+            # ("###", "Header 3"),
             # ("####", "Header 4"),
         ]
         self.md_header_splitter = MarkdownHeaderTextSplitter(
@@ -388,25 +387,6 @@ class MarkDownSplitter(BaseChunker):
         )
         return sum(overlapped_elements, [])
 
-    def _add_overlap(self, chunks: list[tuple[str, str]]) -> list[str]:
-        """Adds overlapping text for image and table chunks."""
-
-        overlap_chars = int(self.chunk_overlap * 4)  # Assuming 4 characters per token
-        chunk_l = []
-        for i, (chunk_type, chunk) in enumerate(chunks):
-            if chunk_type != "text" and i > 0:
-                prev_chunk_type, prev_chunk = chunks[i - 1]
-                if prev_chunk_type == "text":
-                    # Add overlap from previous text chunk
-                    overlap = (
-                        prev_chunk[-overlap_chars:]
-                        if len(prev_chunk) > overlap_chars
-                        else prev_chunk
-                    )
-                    chunk = f"{overlap}\n{chunk}"
-            chunk_l.append((chunk_type, chunk))
-        return chunk_l
-
     async def split_document(self, doc: Document, task_id: str = None):
         metadata = doc.metadata
         log = logger.bind(
@@ -421,8 +401,14 @@ class MarkDownSplitter(BaseChunker):
         all_content = doc.page_content.strip()
         splits = split_md_elements(all_content)
 
-        # Add overlap to image and table chunks
-        splits = self._add_overlap(splits)
+        # Add overlap image and table chunks
+        splits = add_overlap(
+            chunks=splits,
+            target_chunk_types=["table", "image"],
+            add_before=True,
+            add_after=True,
+            chunk_overlap=self.chunk_overlap,
+        )
 
         # only split text elements into chunks
         chunks = []
@@ -431,6 +417,11 @@ class MarkDownSplitter(BaseChunker):
                 chunks.extend(self.split_md_chunks(content))
             else:
                 chunks.append(content)
+
+        # regrouping chunks based on token length
+        chunks = combine_chunks(
+            chunks=chunks, llm=self.llm, chunk_max_size=self.chunk_size
+        )
 
         chunks_w_context = chunks  # Default to original chunks if no contextualization
         if self.contextual_retrieval:
@@ -447,7 +438,7 @@ class MarkDownSplitter(BaseChunker):
             end_page = page_info["end_page"]
             prev_page_num = end_page
 
-            if len(chunk.strip()) > 3:
+            if len(chunk.strip()) > 10:
                 filtered_chunks.append(
                     Document(
                         page_content=chunk_w_context,

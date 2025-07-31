@@ -27,7 +27,7 @@ def _get_token_length(documents: str | Document, llm: ChatOpenAI = None) -> int:
 
 
 def combine_chunks(
-    chunks: list[str | Document],
+    chunks: list[str | Document | tuple[str, str]],
     llm: ChatOpenAI = None,
     chunk_max_size: int = 512,
 ) -> list[str]:  # type: ignore
@@ -105,3 +105,65 @@ def split_md_elements(md_text: str):
             parts.append(("text", remaining_text.strip()))
 
     return parts
+
+
+def add_overlap(
+    chunks: list[tuple[str, str]],
+    target_chunk_types: list[str],
+    add_before: bool = True,
+    add_after: bool = False,
+    chunk_overlap: float = None,
+) -> list[tuple[str, str]]:
+    """
+    Add overlap from adjacent text chunks to specified chunk types.
+
+    Args:
+        chunks: List of (chunk_type, chunk_content) tuples
+        target_chunk_types: List of chunk types to add overlap to (e.g., ['table', 'image'])
+        add_before: Whether to add overlap from previous text chunk
+        add_after: Whether to add overlap from next text chunk
+        chunk_overlap: Overlap ratio (uses self.chunk_overlap if None)
+
+    Returns:
+        List of (chunk_type, chunk_content) tuples with overlap added
+    """
+    overlap_chars = int(chunk_overlap * 4)  # Assuming 4 characters per token
+    chunk_l = []
+
+    for i, (chunk_type, chunk_content) in enumerate(chunks):
+        modified_chunk = chunk_content
+
+        if chunk_type in target_chunk_types:
+            overlap_parts = []
+
+            # Add overlap from previous text chunk
+            if add_before and i > 0:
+                prev_chunk_type, prev_chunk = chunks[i - 1]
+                if prev_chunk_type == "text":
+                    prev_overlap = (
+                        prev_chunk[-overlap_chars:]
+                        if len(prev_chunk) > overlap_chars
+                        else prev_chunk
+                    )
+                    overlap_parts.append(prev_overlap)
+
+            # Add the original chunk
+            overlap_parts.append(modified_chunk)
+
+            # Add overlap from next text chunk
+            if add_after and i < len(chunks) - 1:
+                next_chunk_type, next_chunk = chunks[i + 1]
+                if next_chunk_type == "text":
+                    next_overlap = (
+                        next_chunk[:overlap_chars]
+                        if len(next_chunk) > overlap_chars
+                        else next_chunk
+                    )
+                    overlap_parts.append(next_overlap)
+
+            # Join all parts with newlines
+            modified_chunk = "\n".join(overlap_parts)
+
+        chunk_l.append((chunk_type, modified_chunk))
+
+    return chunk_l
