@@ -175,11 +175,11 @@ async def add_file(
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
         log.debug("File saved to disk.")
-    except Exception:
-        log.exception("Failed to save file to disk.")
+    except Exception as e:
+        log.exception("Failed to save file to disk.", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save uploaded file.",
+            detail=str(e),
         )
     file_stat = Path(file_path).stat()
 

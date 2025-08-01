@@ -14,5 +14,5 @@ class ImageLoader(BaseLoader):
         description = await self.get_image_description(image_data=img)
         doc = Document(page_content=description, metadata=metadata)
         if save_markdown:
-            self.save_document(doc, str(path))
+            self.save_content(description, str(path))
         return doc
