@@ -107,7 +107,7 @@ class MarkerWorker:
             render = converter(file_path)
             return render
         except Exception as e:
-            logger.exception("Error processing PDF", path=file_path)
+            logger.exception("Error processing PDF", path=file_path, error=str(e))
             raise
         finally:
             gc.collect()
