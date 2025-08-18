@@ -5,6 +5,7 @@ include:
   - ${INDEXERUI_COMPOSE_FILE:-extern/dummy.yaml}
 
 x-openrag: &openrag_template
+  image: ghcr.io/linagora/openrag:latest
   build:
     context: .
     dockerfile: Dockerfile
@@ -13,7 +14,6 @@ x-openrag: &openrag_template
     - ${DATA_VOLUME:-./data}:/app/data
     - ${MODEL_WEIGHTS_VOLUME:-~/.cache/huggingface}:/app/model_weights # Model weights for RAG
     - ./openrag:/app/openrag # For dev mode
-    - ${DB_VOLUME:-./db}:/app/db
     - /$SHARED_ENV:/ray_mount/.env # Shared environment variables
     - /ray_mount/logs:/app/logs
   ports:
@@ -43,6 +43,7 @@ x-vllm: &vllm_template
   command: >
     --model ${EMBEDDER_MODEL_NAME:-jinaai/jina-embeddings-v3}
     --trust-remote-code
+    --gpu_memory_utilization 0.3
   ports:
     - ${VLLM_PORT:-8000}:8000
 services:
@@ -65,6 +66,14 @@ services:
     deploy: {}
     profiles:
       - 'cpu'
+
+  rdb:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-root_password}
+      - POSTGRES_USER=${POSTGRES_USER:-root}
+    volumes:
+      - ${DB_VOLUME:-./db}:/var/lib/postgresql/data
 
   vllm-gpu:
     <<: *vllm_template
@@ -90,3 +99,4 @@ services:
     deploy: {}
     profiles:
       - 'cpu'
+

@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     make \
     ssh \ 
     rsync \
+    libpq-dev python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # install ffmpeg
@@ -37,8 +38,6 @@ RUN pip3 install uv && \
     uv sync --no-dev
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
-
-COPY ray-cluster/ /app/ray-cluster/
 
 # Set workdir for source code
 WORKDIR /app/openrag

@@ -1,7 +1,5 @@
 import asyncio
-
 import torch
-from components.utils import SingletonMeta
 from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.document import ConversionResult
@@ -17,21 +15,36 @@ from docling_core.types.doc.document import PictureItem
 from langchain_core.documents.base import Document
 from tqdm.asyncio import tqdm
 from utils.logger import get_logger
+from config import load_config
+
+import asyncio
 
 from ..base import BaseLoader
+import ray
+
 
 logger = get_logger()
+config = load_config()
 
 
-class DoclingConverter(metaclass=SingletonMeta):
+if torch.cuda.is_available():
+    DOCLING_NUM_GPUS = config.loader.get("docling_num_gpus", 0.01)
+else:  # On CPU
+    DOCLING_NUM_GPUS = 0
+
+DOCLING_MAX_TASKS_PER_WORKER = config.loader.get("docling_max_tasks_per_worker", 2)
+
+
+@ray.remote(num_gpus=DOCLING_NUM_GPUS)
+class DoclingWorker:
     def __init__(self):
-        img_scale = 1
+        img_scale = 2
         pipeline_options = PdfPipelineOptions(
             do_ocr=True,
             do_table_structure=True,
             generate_picture_images=True,
             images_scale=img_scale,
-            generate_table_images=True,
+            # generate_table_images=True,
             # generate_page_images=True
         )
         pipeline_options.table_structure_options = TableStructureOptions(
@@ -49,23 +62,55 @@ class DoclingConverter(metaclass=SingletonMeta):
             }
         )
 
-    async def convert_to_md(self, file_path) -> ConversionResult:
-        o = await asyncio.to_thread(self.converter.convert, str(file_path))
-        return o
+    async def convert(self, file_path) -> ConversionResult:
+        with torch.no_grad():
+            o = await asyncio.to_thread(self.converter.convert, str(file_path))
+            return o
 
 
-class DoclingLoader(BaseLoader):
+@ray.remote
+class DoclingPool:
+    def __init__(self):
+        from config import load_config
+        from utils.logger import get_logger
+
+        self.logger = get_logger()
+        self.config = load_config()
+        self.pool_size = config.loader.get("docling_pool_size", 1)
+
+        self.actors = [DoclingWorker.remote() for _ in range(self.pool_size)]
+        self._queue: asyncio.Queue[ray.actor.ActorHandle] = asyncio.Queue()
+
+        for _ in range(DOCLING_MAX_TASKS_PER_WORKER):
+            for actor in self.actors:
+                self._queue.put_nowait(actor)
+
+        total_slots = self.pool_size * DOCLING_MAX_TASKS_PER_WORKER
+        self.logger.info(
+            f"Docling pool: {self.pool_size} actors × {DOCLING_MAX_TASKS_PER_WORKER} slots = "
+            f"{total_slots} PDF concurrency"
+        )
+
+    async def process_pdf(self, file_path: str) -> ConversionResult:
+        actor: DoclingWorker = await self._queue.get()
+        try:
+            result = await actor.convert.remote(file_path)
+            return result
+        finally:
+            await self._queue.put(actor)
+
+
+class DoclingLoader2(BaseLoader):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.converter = DoclingConverter()
-
-    async def convert_to_md(self, file_path) -> ConversionResult:
-        return await asyncio.to_thread(self.converter.convert, str(file_path))
+        self.docling_actor: DoclingPool = ray.get_actor(
+            "DoclingPool", namespace="openrag"
+        )
 
     async def aload_document(self, file_path, metadata, save_markdown=False):
-        with torch.no_grad():
-            result = await self.converter.convert_to_md(file_path)
-
+        result: ConversionResult = await self.docling_actor.process_pdf.remote(
+            file_path
+        )
         n_pages = len(result.pages)
 
         s = ""
@@ -86,7 +131,7 @@ class DoclingLoader(BaseLoader):
 
         doc = Document(page_content=enriched_content, metadata=metadata)
         if save_markdown:
-            self.save_content(enriched_content, str(file_path))
+            self.save_document(Document(page_content=enriched_content), str(file_path))
         return doc
 
     async def get_captions(self, pictures: list[PictureItem]):

@@ -18,7 +18,6 @@ from ..base import BaseLoader
 logger = get_logger()
 config = load_config()
 
-
 if torch.cuda.is_available():
     MARKER_NUM_GPUS = config.loader.get("marker_num_gpus", 0.01)
 else:  # On CPU
@@ -47,8 +46,8 @@ class MarkerWorker:
             "pdftext_workers": 1,
             "disable_multiprocessing": True,
         }
-        if "RAY_ADDRESS" not in os.environ:
-            os.environ["RAY_ADDRESS"] = "auto"
+        os.environ["RAY_ADDRESS"] = "auto"
+
         self.pool = None
         self.init_resources()
 
@@ -87,7 +86,6 @@ class MarkerWorker:
             initargs=(self.model_dict,),
             maxtasksperchild=self.maxtasksperchild,
         )
-
         self.logger.info("MarkerWorker initialized with multiprocessing pool")
 
     @staticmethod
@@ -108,7 +106,7 @@ class MarkerWorker:
             )
             render = converter(file_path)
             return render
-        except Exception:
+        except Exception as e:
             logger.exception("Error processing PDF", path=file_path)
             raise
         finally:
@@ -118,11 +116,30 @@ class MarkerWorker:
                 torch.cuda.ipc_collect()
 
     async def process_pdf(self, file_path: str):
+        from multiprocessing.context import TimeoutError as MPTimeoutError
+
         config = self.converter_config.copy()
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, lambda: self.pool.apply(self._process_pdf, (file_path, config))
-        )
+
+        def run_with_timeout():
+            async_result = self.pool.apply_async(self._process_pdf, (file_path, config))
+            try:
+                result = async_result.get(
+                    timeout=self.config.loader.get("marker_timeout")
+                )
+                return result
+            except MPTimeoutError:
+                self.logger.exception(
+                    "MarkerWorker child process timed out", path=file_path
+                )
+                raise
+            except Exception:
+                self.logger.exception(
+                    "Error processing with MarkerWorker", path=file_path
+                )
+                raise
+
+        result = await loop.run_in_executor(None, run_with_timeout)
         return result.markdown, result.images
 
     def get_current_pool_size(self):
@@ -222,7 +239,7 @@ class MarkerLoader(BaseLoader):
             doc = Document(page_content=markdown, metadata=metadata)
 
             if save_markdown:
-                self.save_document(doc, file_path_str)
+                self.save_content(markdown, file_path_str)
 
             duration = time.time() - start
             logger.info(f"Processed {file_path_str} in {duration:.2f}s")
@@ -239,7 +256,7 @@ class MarkerLoader(BaseLoader):
         tasks = []
         keys = []
         for key, picture in img_dict.items():
-            tasks.append(self.get_image_description(image=picture))
+            tasks.append(self.get_image_description(image_data=picture))
             keys.append(key)
 
         try:
