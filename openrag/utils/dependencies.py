@@ -1,70 +1,57 @@
 import ray
 import ray.actor
-from config import load_config
-
-from components import ABCVectorDB
+from components import BaseVectorDB
 from components.indexer.indexer import Indexer, TaskStateManager
 from components.indexer.loaders.pdf_loaders.marker import MarkerPool
+from components.indexer.loaders.pdf_loaders.docling2 import DoclingPool
 from components.indexer.loaders.serializer import SerializerQueue
+from components.indexer.vectordb.vectordb import ConnectorFactory
+from config import load_config
 
 
-class VDBProxy:
-    """Class that delegates method calls to the remote vectordb."""
-
-    def __init__(self, indexer_actor: ray.actor.ActorHandle):
-        self.indexer_actor = indexer_actor  # Reference to the remote actor
-
-    def __getattr__(self, method_name):
-        # Check if the method is async on the remote vectordb
-        is_async = ray.get(self.indexer_actor._is_method_async.remote(method_name))
-
-        if is_async:
-            # Return an async coroutine for async methods
-            async def async_wrapper(*args, **kwargs):
-                result_ref = self.indexer_actor._delegate_vdb_call.remote(
-                    method_name, *args, **kwargs
-                )
-                return await result_ref
-
-            return async_wrapper
-
-        else:
-            # Return a blocking wrapper for sync methods
-            def sync_wrapper(*args, **kwargs):
-                return ray.get(
-                    self.indexer_actor._delegate_vdb_call.remote(
-                        method_name, *args, **kwargs
-                    )
-                )
-
-            return sync_wrapper
+def get_or_create_actor(name, cls, namespace="openrag", **options):
+    try:
+        return ray.get_actor(name, namespace=namespace)
+    except ValueError:
+        return cls.options(name=name, namespace=namespace, **options).remote()
+    except Exception:
+        raise
 
 
 # load config
 config = load_config()
 
-# Initialize marker if needed
-if config.loader.file_loaders.get("pdf") == "MarkerLoader":
-    marker = MarkerPool.options(name="MarkerPool", namespace="openrag").remote()
 
-# Create task state manager actor
-task_state_manager = TaskStateManager.options(
-    name="TaskStateManager", lifetime="detached", namespace="openrag"
-).remote()
+def get_task_state_manager():
+    return get_or_create_actor(
+        "TaskStateManager", TaskStateManager, lifetime="detached"
+    )
 
-# Create document serializer actor
-serializer_queue = SerializerQueue.options(
-    name="SerializerQueue", namespace="openrag"
-).remote()
 
-# Create global indexer supervisor actor
-indexer = Indexer.options(name="Indexer", namespace="openrag").remote()
+def get_serializer_queue():
+    return get_or_create_actor("SerializerQueue", SerializerQueue)
 
-# Create vectordb instance
-vectordb: ABCVectorDB = VDBProxy(
-    indexer_actor=indexer
-)  # vectordb is not of type ABCVectorDB, but it mimics it
+
+def get_marker_pool():
+    pdf_loader = config.loader.file_loaders.get("pdf")
+    match pdf_loader:
+        case "DoclingLoader2":
+            return get_or_create_actor("DoclingPool", DoclingPool)
+        case "MarkerLoader":
+            return get_or_create_actor("MarkerPool", MarkerPool)
 
 
 def get_indexer():
-    return indexer
+    return get_or_create_actor("Indexer", Indexer)
+
+
+def get_vectordb() -> BaseVectorDB:
+    vectordb_cls = ConnectorFactory().get_vectordb_cls()
+    return get_or_create_actor("Vectordb", vectordb_cls)
+
+
+task_state_manager = get_task_state_manager()
+serializer_queue = get_serializer_queue()
+vectordb = get_vectordb()
+indexer = get_indexer()
+marker_pool = get_marker_pool()

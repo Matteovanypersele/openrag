@@ -5,7 +5,6 @@ from PIL import Image
 import io
 
 from langchain_core.documents.base import Document
-
 from .base import BaseLoader
 from . import get_loader_classes
 from typing import Optional
@@ -28,9 +27,11 @@ class EmlLoader(BaseLoader):
         # Get available loaders for processing attachments
         self.loader_classes = get_loader_classes(config=self.config)
 
-    async def aload_document(self, file_path, metadata: dict = None, save_markdown: bool = False):
+    async def aload_document(
+        self, file_path, metadata: dict = None, save_markdown: bool = False
+    ):
         try:
-            with open(file_path, 'rb') as fhdl:
+            with open(file_path, "rb") as fhdl:
                 raw_email = fhdl.read()
 
             # Parse email using standard email library
@@ -274,5 +275,5 @@ class EmlLoader(BaseLoader):
         except Exception as e:
             raise ValueError(f"Failed to parse the EML file {file_path}: {e}")
 
-        document = Document(page_content=content_body, metadata=metadata)        
+        document = Document(page_content=content_body, metadata=metadata)
         return document

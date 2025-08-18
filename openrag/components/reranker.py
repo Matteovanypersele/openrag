@@ -4,7 +4,6 @@ from infinity_client.api.default import rerank
 from infinity_client.models import RerankInput, ReRankResult
 from langchain_core.documents.base import Document
 
-
 class Reranker:
     def __init__(self, logger, config):
         self.model_name = config.reranker["model_name"]

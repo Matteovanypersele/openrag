@@ -1,6 +1,7 @@
 import json
 from urllib.parse import quote
 
+from components import RagPipeline
 from config.config import load_config
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -10,11 +11,15 @@ from models.openai import (
     OpenAICompletionRequest,
 )
 from openai import AsyncOpenAI
+from utils.dependencies import get_vectordb
 from utils.logger import get_logger
 
 logger = get_logger()
 config = load_config()
 router = APIRouter()
+
+vectordb = get_vectordb()
+ragpipe = RagPipeline(config=config, vectordb=vectordb, logger=logger)
 
 
 def get_app_state(request: Request):
@@ -58,7 +63,7 @@ async def check_llm_model_availability(request: Request):
 async def list_models(
     app_state=Depends(get_app_state), _: None = Depends(check_llm_model_availability)
 ):
-    partitions = app_state.vectordb.list_partitions()
+    partitions = await vectordb.list_partitions.remote()
     logger.debug("Listing models", partition_count=len(partitions))
 
     models = []
@@ -78,14 +83,14 @@ async def list_models(
     return JSONResponse(content={"object": "list", "data": models})
 
 
-def __get_partition_name(model_name, app_state):
+async def __get_partition_name(model_name, app_state):
     if not model_name.startswith("openrag-"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Model not found. Model should respect this format `openrag-{partition}`",
         )
     partition = model_name.split("openrag-")[1]
-    if partition != "all" and not app_state.vectordb.partition_exists(partition):
+    if partition != "all" and not await vectordb.partition_exists.remote(partition):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Partition `{partition}` not found for given model `{model_name}`",
@@ -98,7 +103,6 @@ def __prepare_sources(request: Request, docs: list[Document]):
     for doc in docs:
         doc_metadata = dict(doc.metadata)
         file_url = str(request.url_for("static", path=doc_metadata["filename"]))
-        # file_url = file_url.replace("http://", "https://")  # Ensure HTTPS
         encoded_url = quote(file_url, safe=":/")
         links.append(
             {
@@ -148,13 +152,13 @@ async def openai_chat_completion(
         )
 
     try:
-        partition = __get_partition_name(model_name, app_state)
+        partition = await __get_partition_name(model_name, app_state)
     except Exception as e:
         log.warning(f"Invalid model or partition: {e}")
         raise
 
     try:
-        llm_output, docs = await app_state.ragpipe.chat_completion(
+        llm_output, docs = await ragpipe.chat_completion(
             partition=[partition], payload=request.model_dump()
         )
         log.debug("RAG chat completion pipeline executed.")
@@ -241,13 +245,14 @@ async def openai_completion(
         )
 
     try:
-        partition = __get_partition_name(model_name, app_state)
+        partition = await __get_partition_name(model_name, app_state)
+
     except Exception as e:
         log.warning(f"Invalid model or partition: {e}")
         raise
 
     try:
-        llm_output, docs = await app_state.ragpipe.completions(
+        llm_output, docs = await ragpipe.completions(
             partition=[partition], payload=request.model_dump()
         )
         log.debug("RAG completion pipeline executed.")

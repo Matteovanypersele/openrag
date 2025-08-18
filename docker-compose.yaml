@@ -5,6 +5,7 @@ include:
   - ${INDEXERUI_COMPOSE_FILE:-extern/dummy.yaml}
 
 x-openrag: &openrag_template
+  image: ghcr.io/linagora/openrag:latest
   build:
     context: .
     dockerfile: Dockerfile
@@ -42,6 +43,7 @@ x-vllm: &vllm_template
   command: >
     --model ${EMBEDDER_MODEL_NAME:-jinaai/jina-embeddings-v3}
     --trust-remote-code
+    --gpu_memory_utilization 0.3
   ports:
     - ${VLLM_PORT:-8000}:8000
 services:

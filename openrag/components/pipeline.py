@@ -8,7 +8,7 @@ from openai import AsyncOpenAI
 from utils.logger import get_logger
 
 from .grader import Grader
-from .indexer import ABCVectorDB
+from .indexer import BaseVectorDB
 from .llm import LLM
 from .map_reduce import RAGMapReduce
 from .reranker import Reranker
@@ -27,12 +27,12 @@ RAG_MAP_REDUCE = os.environ.get("RAG_MAP_REDUCE", "false").lower() == "true"
 
 
 class RetrieverPipeline:
-    def __init__(self, config, vectordb: ABCVectorDB, logger=None) -> None:
+    def __init__(self, config, vectordb: BaseVectorDB, logger=None) -> None:
         self.config = config
         self.logger = logger
 
         # vectordb
-        self.vectordb: ABCVectorDB = vectordb
+        self.vectordb: BaseVectorDB = vectordb
 
         # retriever
         self.retriever: ABCRetriever = RetrieverFactory.create_retriever(
@@ -79,7 +79,7 @@ class RetrieverPipeline:
 
 
 class RagPipeline:
-    def __init__(self, config, vectordb: ABCVectorDB, logger=None) -> None:
+    def __init__(self, config, vectordb: BaseVectorDB, logger=None) -> None:
         self.config = config
         self.logger = logger
 
@@ -107,6 +107,7 @@ class RagPipeline:
         self.contextualizer = AsyncOpenAI(
             base_url=config.vlm["base_url"], api_key=config.vlm["api_key"]
         )
+        self.max_contextualized_query_len = config.rag["max_contextualized_query_len"]
 
         self.map_reduce: RAGMapReduce = RAGMapReduce(config=config)
 
@@ -125,6 +126,11 @@ class RagPipeline:
 
                 params = dict(self.config.llm_params)
                 params.pop("max_retries")
+                params["max_completion_tokens"] = self.max_contextualized_query_len
+                params["extra_body"] = {
+                    "chat_template_kwargs": {"enable_thinking": False}
+                }
+
                 response = await self.contextualizer.chat.completions.create(
                     model=self.config.vlm["model"],
                     messages=[
