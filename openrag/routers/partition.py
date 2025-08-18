@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_indexer, get_vectordb
@@ -8,6 +10,13 @@ router = APIRouter()
 
 indexer = get_indexer()
 vectordb = get_vectordb()
+
+indexer = get_indexer()
+vectordb = get_vectordb()
+
+
+def _quote_param_value(s: str) -> str:
+    return quote(s, safe="")
 
 
 @router.get("/")
@@ -82,7 +91,9 @@ async def list_files(request: Request, partition: str, limit: int | None = None)
         return {
             "link": str(
                 request.url_for(
-                    "get_file", partition=partition, file_id=file_dict["file_id"]
+                    "get_file",
+                    partition=_quote_param_value(partition),
+                    file_id=_quote_param_value(file_dict["file_id"]),
                 )
             ),
             **file_dict,
