@@ -136,5 +136,5 @@ class PPTXLoader(BaseLoader):
 
         doc = Document(page_content=md_content, metadata=metadata)
         if save_markdown:
-            self.save_document(Document(page_content=md_content), str(file_path))
+            self.save_content(md_content, str(file_path))
         return doc

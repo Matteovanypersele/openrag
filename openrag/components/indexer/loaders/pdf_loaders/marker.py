@@ -239,7 +239,7 @@ class MarkerLoader(BaseLoader):
             doc = Document(page_content=markdown, metadata=metadata)
 
             if save_markdown:
-                self.save_document(doc, file_path_str)
+                self.save_content(markdown, file_path_str)
 
             duration = time.time() - start
             logger.info(f"Processed {file_path_str} in {duration:.2f}s")

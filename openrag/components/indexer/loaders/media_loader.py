@@ -62,5 +62,5 @@ class VideoAudioLoader(BaseLoader):
         content = result["text"]
         doc = Document(page_content=content, metadata=metadata)
         if save_markdown:
-            self.save_document(Document(page_content=content), str(file_path))
+            self.save_content(content, str(file_path))
         return doc

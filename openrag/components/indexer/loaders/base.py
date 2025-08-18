@@ -10,12 +10,13 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from utils.logger import get_logger
 from PIL import Image
-
 from ...utils import load_config, load_sys_template, vlmSemaphore
 
-logger = get_logger()
 
+logger = get_logger()
 config = load_config()
+
+# Load the image description prompt from the configuration
 prompts_dir = Path(config.paths.prompts_dir)
 img_desc_prompt_path = prompts_dir / config.prompt["image_describer"]
 IMAGE_DESCRIPTION_PROMPT = load_sys_template(img_desc_prompt_path)
@@ -34,6 +35,8 @@ class BaseLoader(ABC):
         settings: dict = vlm_config
         settings.update(model_settings)
 
+        self.image_captioning = self.config.loader.get("image_captioning", False)
+
         self.vlm_endpoint = ChatOpenAI(**settings).with_retry(stop_after_attempt=2)
         self.min_width_pixels = 0  # minimum width in pixels
         self.min_height_pixels = 0  # minimum height in pixels
@@ -46,10 +49,10 @@ class BaseLoader(ABC):
     ):
         pass
 
-    def save_document(self, doc: Document, path: str):
+    def save_content(self, text_content: str, path: str):
         path = re.sub(r"\..*", ".md", path)
         with open(path, "w", encoding="utf-8") as f:
-            f.write(doc.page_content)
+            f.write(text_content)
         logger.debug(f"Document saved to {path}")
 
     def _pil_image_to_base64(self, image: Image.Image) -> str:
@@ -152,4 +155,4 @@ class BaseLoader(ABC):
                 logger.exception(f"Error while generating image description: {str(e)}")
                 image_description = ""
 
-            return f"""\n<image_description>\n{image_description}\n</image_description>\n"""
+            return f"""<image_description>\n{image_description}\n</image_description>"""

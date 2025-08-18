@@ -20,7 +20,7 @@ class MarkItDownLoader(BaseLoader):
     async def aload_document(self, file_path, metadata, save_markdown=False):
         result = self.converter.convert(file_path).text_content
 
-        if self.config["loader"]["image_captioning"]:
+        if self.image_captioning:
             images = self.get_images_from_zip(file_path)
             captions = await self.get_captions(images)
             for caption in captions:
@@ -35,7 +35,7 @@ class MarkItDownLoader(BaseLoader):
 
         doc = Document(page_content=result, metadata=metadata)
         if save_markdown:
-            self.save_document(Document(page_content=result), str(file_path))
+            self.save_content(result, str(file_path))
         return doc
 
     async def get_captions(self, images):
