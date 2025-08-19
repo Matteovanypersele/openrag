@@ -371,6 +371,8 @@ async def get_task_error(
                 detail=f"No error found for task '{task_id}'.",
             )
         return {"task_id": task_id, "traceback": error.splitlines()}
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
