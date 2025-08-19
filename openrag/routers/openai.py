@@ -18,7 +18,7 @@ logger = get_logger()
 config = load_config()
 router = APIRouter()
 
-ragpipe = RagPipeline(config=config, vectordb=get_vectordb(), logger=logger)
+ragpipe = RagPipeline(config=config, logger=logger)
 
 
 def get_app_state(request: Request):
