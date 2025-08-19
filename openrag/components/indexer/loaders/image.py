@@ -11,8 +11,8 @@ class ImageLoader(BaseLoader):
     async def aload_document(self, file_path, metadata=None, save_markdown=False):
         path = Path(file_path)
         img = Image.open(path)
-        description = await self.get_image_description(image=img)
+        description = await self.get_image_description(image_data=img)
         doc = Document(page_content=description, metadata=metadata)
         if save_markdown:
-            self.save_document(doc, str(path))
+            self.save_content(description, str(path))
         return doc

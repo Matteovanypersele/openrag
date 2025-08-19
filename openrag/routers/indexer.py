@@ -99,10 +99,23 @@ def _human_readable_size(size_bytes: int) -> str:
     return f"{size_bytes:.2f} PB"
 
 
-@router.get("/supported/types")
+@router.get(
+    "/supported/types",
+    description="Returns the list of supported file extensions and MIME types.",
+)
 async def get_supported_types():
+    """
+    Get a list of supported types for indexing.
+
+    Returns:
+        JSON object containing:
+        - `extensions`: List of supported file extensions.
+        - `mimetypes`: List of supported MIME types.
+    """
     list_extensions = list(ACCEPTED_FILE_FORMATS)
-    return JSONResponse(content={"supported_types": list_extensions})
+    list_mimetypes = list(DICT_MIMETYPES)
+    resp = {"extensions": list_extensions, "mimetypes": list_mimetypes}
+    return JSONResponse(content=resp)
 
 
 @router.post(
@@ -160,11 +173,11 @@ async def add_file(
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
         log.debug("File saved to disk.")
-    except Exception:
-        log.exception("Failed to save file to disk.")
+    except Exception as e:
+        log.exception("Failed to save file to disk.", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save uploaded file.",
+            detail=str(e),
         )
     file_stat = Path(file_path).stat()
 

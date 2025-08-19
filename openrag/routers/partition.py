@@ -4,7 +4,6 @@ from utils.dependencies import get_indexer, get_vectordb
 from utils.logger import get_logger
 
 logger = get_logger()
-
 router = APIRouter()
 
 indexer = get_indexer()
@@ -13,13 +12,8 @@ vectordb = get_vectordb()
 
 @router.get("/")
 async def list_existant_partitions():
-    def pop_files(partition):
-        partition.pop("files")
-        return partition
-
     try:
         partitions = await vectordb.list_partitions.remote()
-        partitions = list(map(pop_files, partitions))
         logger.debug(
             "Returned list of existing partitions.", partition_count=len(partitions)
         )
@@ -57,10 +51,7 @@ async def delete_partition(partition: str):
 
 
 @router.get("/{partition}")
-async def list_files(
-    request: Request,
-    partition: str,
-):
+async def list_files(request: Request, partition: str, limit: int | None = None):
     log = logger.bind(partition=partition)
 
     if not await vectordb.partition_exists.remote(partition):
@@ -71,22 +62,23 @@ async def list_files(
         )
 
     try:
-        partition_dict = await vectordb.get_partition.remote(partition=partition)
+        partition_dict = await vectordb.list_partition_files.remote(
+            partition=partition, limit=limit
+        )
         log.debug(
             "Listed files in partition", file_count=len(partition_dict.get("files", []))
         )
     except ValueError as e:
         log.warning(f"Invalid partition value: {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
+    except Exception as e:
         log.exception("Failed to list files in partition")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to list files",
+            detail=f"Failed to list files: {str(e)}",
         )
 
-    def process_file(file_obj):
-        file_dict = file_obj.to_dict()
+    def process_file(file_dict):
         return {
             "link": str(
                 request.url_for(
@@ -98,27 +90,6 @@ async def list_files(
 
     partition_dict["files"] = list(map(process_file, partition_dict.get("files", [])))
     return JSONResponse(status_code=status.HTTP_200_OK, content=partition_dict)
-
-
-@router.get("/check-file/{partition}/file/{file_id}")
-async def check_file_exists_in_partition(
-    partition: str,
-    file_id: str,
-):
-    log = logger.bind(partition=partition, file_id=file_id)
-    exists = await vectordb.file_exists.remote(file_id, partition)
-    if not exists:
-        log.warning("File not found in partition.")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found in partition '{partition}'.",
-        )
-
-    log.debug("File exists in partition.")
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=f"File '{file_id}' exists in partition '{partition}'.",
-    )
 
 
 @router.get("/{partition}/file/{file_id}")
@@ -160,35 +131,6 @@ async def get_file(
     )
 
 
-@router.get("/{partition}/sample")
-async def sample_chunks(
-    request: Request, partition: str, n_ids: int = 200, seed: int | None = None
-):
-    # Check if partition exists
-    if not await vectordb.partition_exists.remote(partition):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Partition '{partition}' not found.",
-        )
-
-    try:
-        list_ids = await vectordb.sample_chunk_ids.remote(
-            partition=partition, n_ids=n_ids, seed=seed
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-    chunks = [
-        {"link": str(request.url_for("get_extract", extract_id=id))} for id in list_ids
-    ]
-
-    return JSONResponse(status_code=status.HTTP_200_OK, content={"chunk_urls": chunks})
-
-
 @router.get("/{partition}/chunks")
 async def list_all_chunks(
     request: Request, partition: str, include_embedding: bool = True
@@ -222,6 +164,56 @@ async def list_all_chunks(
         for chunk in chunks
     ]
     return JSONResponse(status_code=status.HTTP_200_OK, content={"chunks": chunks})
+
+
+# @router.get("/{partition}/sample")
+# async def sample_chunks(
+#     request: Request, partition: str, n_ids: int = 200, seed: int | None = None
+# ):
+#     # Check if partition exists
+#     if not await vectordb.partition_exists.remote(partition):
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"Partition '{partition}' not found.",
+#         )
+
+#     try:
+#         list_ids = await vectordb.sample_chunk_ids.remote(
+#             partition=partition, n_ids=n_ids, seed=seed
+#         )
+#     except ValueError as e:
+#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+#         )
+
+#     chunks = [
+#         {"link": str(request.url_for("get_extract", extract_id=id))} for id in list_ids
+#     ]
+
+#     return JSONResponse(status_code=status.HTTP_200_OK, content={"chunk_urls": chunks})
+
+
+# @router.get("/check-file/{partition}/file/{file_id}")
+# async def check_file_exists_in_partition(
+#     partition: str,
+#     file_id: str,
+# ):
+#     log = logger.bind(partition=partition, file_id=file_id)
+#     exists = await vectordb.file_exists.remote(file_id, partition)
+#     if not exists:
+#         log.warning("File not found in partition.")
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"File '{file_id}' not found in partition '{partition}'.",
+#         )
+
+#     log.debug("File exists in partition.")
+#     return JSONResponse(
+#         status_code=status.HTTP_200_OK,
+#         content=f"File '{file_id}' exists in partition '{partition}'.",
+#     )
 
 
 # def process_partition(partition):

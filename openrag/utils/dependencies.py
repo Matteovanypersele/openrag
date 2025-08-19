@@ -1,10 +1,11 @@
 import ray
 import ray.actor
-from components import ABCVectorDB
+from components import BaseVectorDB
 from components.indexer.indexer import Indexer, TaskStateManager
 from components.indexer.loaders.pdf_loaders.marker import MarkerPool
+from components.indexer.loaders.pdf_loaders.docling2 import DoclingPool
 from components.indexer.loaders.serializer import SerializerQueue
-from components.indexer.vectordb.vectordb import MilvusDB
+from components.indexer.vectordb.vectordb import ConnectorFactory
 from config import load_config
 
 
@@ -32,16 +33,20 @@ def get_serializer_queue():
 
 
 def get_marker_pool():
-    if config.loader.file_loaders.get("pdf") == "MarkerLoader":
-        return get_or_create_actor("MarkerPool", MarkerPool, lifetime="detached")
-
+    pdf_loader = config.loader.file_loaders.get("pdf")
+    match pdf_loader:
+        case "DoclingLoader2":
+            return get_or_create_actor("DoclingPool", DoclingPool, lifetime="detached")
+        case "MarkerLoader":
+            return get_or_create_actor("MarkerPool", MarkerPool, lifetime="detached")
 
 def get_indexer():
     return get_or_create_actor("Indexer", Indexer, lifetime="detached")
 
 
-def get_vectordb() -> ABCVectorDB:
-    return get_or_create_actor("Vectordb", MilvusDB, lifetime="detached")
+def get_vectordb() -> BaseVectorDB:
+    vectordb_cls = ConnectorFactory().get_vectordb_cls()
+    return get_or_create_actor("Vectordb", vectordb_cls, lifetime="detached")
 
 
 task_state_manager = get_task_state_manager()

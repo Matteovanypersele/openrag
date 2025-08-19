@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from langchain_openai import ChatOpenAI
 from tqdm.asyncio import tqdm
+from sklearn.cluster import DBSCAN
 import umap.umap_ as umap
 import hdbscan
 import pickle
@@ -34,10 +35,9 @@ settings = {
 llm = ChatOpenAI(**settings).with_retry(stop_after_attempt=2)
 
 
-# question_tmpl = """You are a question generation assistant. I will give you multiple related paragraphs.
-# Your task is to generate a **single meaningful question** that reflects the **combined information and logical flow** of all the paragraphs.
-
-# Make sure not to focus only on one paragraph. Capture the connection between them.
+# question_tmpl = """You are a question generation assistant.
+# I will provide you with one or more paragraphs.
+# Your task is to generate a unique and relevant question reflecting the key information in the paragraph(s).
 # """
 
 # answer_tmpl = """You are an expert in answering questions based on given documents.
@@ -45,10 +45,10 @@ llm = ChatOpenAI(**settings).with_retry(stop_after_attempt=2)
 # The answer should be clear, and directly address the question using the information from the documents.
 # The output should only be the answer, without any additional text or explanation."""
 
-question_tmpl = """Vous êtes un assistant de génération de questions. Je vous fournirai plusieurs paragraphes liés.
-Votre tâche consiste à générer une **question unique et pertinente** reflétant **l'ensemble des informations et le flux logique** de tous les paragraphes.
-
-Veillez à ne pas vous concentrer sur un seul paragraphe. Saisissez le lien entre eux."""
+question_tmpl = """Vous êtes un assistant de génération de questions.
+Je vous fournirai un ou plusieurs paragraphes.
+Votre tâche consiste à générer une question unique et pertinente reflétant l'information clé du paragraphe (ou des paragraphes).
+"""
 
 answer_tmpl = """Vous êtes expert dans la réponse aux questions basées sur des documents.
 À partir d'une question et d'un ensemble de documents, votre tâche consiste à fournir une réponse complète en utilisant tous les documents fournis.
@@ -63,7 +63,7 @@ async def summarize(
         message = [
             {
                 "role": "user",
-                "content": f"Voici le document:\n{chunk}. Donnez-moi un résumé qui précise quel type d'informations et de contenu contient le passage, mais sans entrer dans des détails trop précis",
+                "content": f"Voici le document:\n{chunk}. Donnez-moi un résumé qui précise quel type d'informations et de contenu contient le passage, mais sans entrer dans des détails trop précis."
             }
         ]
 
@@ -89,7 +89,7 @@ async def question_answer(chunks: list[dict], semaphore=asyncio.Semaphore(10)):
             {"role": "system", "content": question_tmpl},
             {
                 "role": "user",
-                "content": f"Voici les documents:\n{chunks_str}. Créez maintenant une question cohérente, pertinente. Cette question ne doit pas dépasser 25 mots de longueur.",
+                "content": f"Voici les documents:\n{chunks_str}. Créez maintenant une question cohérente, pertinente. Cette question ne doit pas dépasser 30 mots de longueur.",
             },
         ]
         output = await llm.ainvoke(messages)
@@ -174,16 +174,23 @@ async def main():
 
     embeddings = np.array(list(map(ast.literal_eval, chunk_embeddings)))
 
-    reducer = umap.UMAP(n_neighbors=15, n_components=5, min_dist=0.1, metric="cosine")
-    embeddings_reduced = reducer.fit_transform(embeddings)
+    # # Optional: Using UMAP to reduce the embedding vectors' dimension size
+    # reducer = umap.UMAP(n_neighbors=15, n_components=5, min_dist=0.1, metric="cosine")
+    # embeddings = reducer.fit_transform(embeddings)
 
+    # Here you have the choice up clustering using HDBSCAN
     hdb = hdbscan.HDBSCAN(min_cluster_size=5, metric="euclidean")
-    labels = hdb.fit_predict(embeddings_reduced)
+    labels = hdb.fit_predict(embeddings)
+
+    # or dbscan
+    db = DBSCAN(eps=0.1, min_samples=3, metric="cosine")
+    db_labels = db.fit(embeddings)
+    labels = db_labels.labels_
 
     clusters = {}
     for idx, label in enumerate(labels):
         if label == -1:
-            continue  # -1 == bruit
+            continue  # -1 == noise
         clusters.setdefault(int(label), []).append(
             {
                 "id": ids[idx],
@@ -195,13 +202,34 @@ async def main():
     for label, items in clusters.items():
         logger.info(f"Cluster {label}: {[item['id'] for item in items]}")
 
+    # d = {}
+    # for i, chunk in enumerate(all_chunks_list):
+    #     content = chunk["content"]
+    #     metadata = chunk["metadata"]
+    #     metadata.pop("vector", None)  # Remove vector from metadata
+
+    #     d[i] = {"content": content, "metadata": metadata}
+
     # # save data
     # os.makedirs("./data", exist_ok=True)
     # pickle.dump(
-    #     clusters, open("./data/chunks_cluster.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL
+    #     d,                                    # Chunks' content, id and source document
+    #     open("./data/chunks_data.pkl", "wb"), 
+    #     protocol=pickle.HIGHEST_PROTOCOL     
     # )
+    # pickle.dump(
+    #     embeddings,                           # Chunks' embedding vectors
+    #     open("./data/chunks_embeddings.pkl", "wb"),
+    #     protocol=pickle.HIGHEST_PROTOCOL,
+    # )
+    # pickle.dump(
+    #     clusters,                             # Chunks' data after being clusterized
+    #     open("./data/chunks_cluster.pkl", "wb"), 
+    #     protocol=pickle.HIGHEST_PROTOCOL
+    # )
+
     questions = await generate_questions_from_clusters(
-        clusters, n_questions_per_cluster=1
+        clusters, n_min=1, n_max=3, n_questions_per_cluster=3
     )
 
     logger.info(f"Questions generated time: ({time.time() - pause}) seconds")
@@ -212,24 +240,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-# d = {}
-# for i, chunk in enumerate(all_chunks_list):
-#     content = chunk["content"]
-#     metadata = chunk["metadata"]
-#     metadata.pop("vector", None)  # Remove vector from metadata
-
-#     d[i] = {"content": content, "metadata": metadata}
-
-
-# # save data
-# os.makedirs("./data", exist_ok=True)
-# pickle.dump(
-#     d, open("./data/chunks_data.pkl", "wb"), protocol=pickle.HIGHEST_PROTOCOL
-# )
-# pickle.dump(
-#     embeddings,
-#     open("./data/chunks_embeddings.pkl", "wb"),
-#     protocol=pickle.HIGHEST_PROTOCOL,
-# )

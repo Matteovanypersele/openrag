@@ -118,7 +118,7 @@ class PPTXLoader(BaseLoader):
         )
 
     async def get_captions(self, images):
-        tasks = [self.get_image_description(image=img) for img in images]
+        tasks = [self.get_image_description(image_data=img) for img in images]
         return await tqdm.gather(*tasks, desc="Generating captions")
 
     async def aload_document(self, file_path, metadata=None, save_markdown=False):
@@ -136,5 +136,5 @@ class PPTXLoader(BaseLoader):
 
         doc = Document(page_content=md_content, metadata=metadata)
         if save_markdown:
-            self.save_document(Document(page_content=md_content), str(file_path))
+            self.save_content(md_content, str(file_path))
         return doc

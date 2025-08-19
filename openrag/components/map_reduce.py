@@ -37,7 +37,7 @@ class RAGMapReduce:
     def __init__(self, config):
         self.config = config
         self.client = AsyncOpenAI(
-            base_url=self.config.llm["base_url"], api_key=self.config.vlm["api_key"]
+            base_url=self.config.llm["base_url"], api_key=self.config.llm["api_key"]
         )
         self.model = self.config.llm["model"]
 

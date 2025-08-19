@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from omegaconf import OmegaConf
 
-from .indexer import ABCVectorDB
+from .indexer import BaseVectorDB
 from .utils import load_sys_template
 
 CRITERIAS = ["similarity"]
@@ -28,7 +28,7 @@ class ABCRetriever(ABC):
 
     @abstractmethod
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         pass
 
@@ -57,7 +57,7 @@ class BaseRetriever(ABCRetriever):
         self.logger = logger
 
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         chunks = await db.async_search.remote(
             query=query,
@@ -127,13 +127,13 @@ class MultiQueryRetriever(BaseRetriever):
             raise KeyError(f"An Error has occured: {e}")
 
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         # generate different perspectives of the query
         generated_queries = await self.generate_queries.ainvoke(
             {"query": query, "k_queries": self.k_queries}
         )
-        chunks = await db.async_multy_query_search.remote(
+        chunks = await db.async_multi_query_search.remote(
             queries=generated_queries,
             partition=partition,
             top_k_per_query=self.top_k,
@@ -176,14 +176,14 @@ class HyDeRetriever(BaseRetriever):
         return hyde_document
 
     async def retrieve(
-        self, partition: list[str], query: str, db: ABCVectorDB
+        self, partition: list[str], query: str, db: BaseVectorDB
     ) -> list[Document]:
         hyde = await self.get_hyde(query)
         queries = [hyde]
         if self.combine:
             queries.append(query)
 
-        return await db.async_multy_query_search.remote(
+        return await db.async_multi_query_search.remote(
             queries=queries,
             partition=partition,
             top_k_per_query=self.top_k,

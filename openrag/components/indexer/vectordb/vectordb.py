@@ -6,37 +6,41 @@ from typing import Dict, List, Optional
 import numpy as np
 import ray
 from langchain_core.documents.base import Document
-from langchain_milvus import BM25BuiltInFunction, Milvus
-from langchain_openai import OpenAIEmbeddings
 from pymilvus import MilvusClient
+
+from openai import AsyncOpenAI, OpenAI, OpenAIError
+
+from pymilvus import (
+    AnnSearchRequest,
+    DataType,
+    FunctionType,
+    MilvusClient,
+    AsyncMilvusClient,
+    MilvusException,
+    RRFRanker,
+    Function,
+)
 
 from .utils import PartitionFileManager
 
-INDEX_PARAMS = [
-    {
-        "metric_type": "BM25",
-        "index_type": "SPARSE_INVERTED_INDEX",
-    },  # For sparse vector
-    {
-        "metric_type": "COSINE",
-        "index_type": "HNSW",
-        "params": {"M": 32, "efConstruction": 100},
-    },  # For dense vector
-]
+
+from utils.logger import get_logger
+
+logger = get_logger()
 
 
-class ABCVectorDB(ABC):
+class BaseVectorDB(ABC):
     """
     Abstract base class for a Vector Database.
     This class defines the interface for a vector database connector.
     """
 
     @abstractmethod
-    async def get_collections(self):
+    async def list_collections(self):
         pass
 
     @abstractmethod
-    async def async_add_documents(self, chunks, partition: Optional[str] = None):
+    async def async_add_documents(self, chunks: list[Document]):
         pass
 
     @abstractmethod
@@ -45,13 +49,13 @@ class ABCVectorDB(ABC):
         query: str,
         top_k: int = 5,
         similarity_threshold: int = 0.80,
-        partition: Optional[str | List[str]] = None,
-        filter: Optional[Dict] = None,
+        partition: list[str] = None,
+        filter: Optional[dict] = None,
     ) -> list[Document]:
         pass
 
     @abstractmethod
-    async def async_multy_query_search(
+    async def async_multi_query_search(
         self, partition: list[str], queries: list[str], top_k_per_query: int = 5
     ) -> list[Document]:
         pass
@@ -74,11 +78,11 @@ class ABCVectorDB(ABC):
     def collection_exists(self, collection_name: str):
         pass
 
-    @abstractmethod
-    def sample_chunk_ids(
-        self, partition: str, n_ids: int = 100, seed: int | None = None
-    ):
-        pass
+    # @abstractmethod
+    # def sample_chunk_ids(
+    #     self, partition: str, n_ids: int = 100, seed: int | None = None
+    # ):
+    #     pass
 
     @abstractmethod
     def list_all_chunk(
@@ -87,96 +91,56 @@ class ABCVectorDB(ABC):
         pass
 
     @abstractmethod
-    def get_partition(self, partition: str):
+    def list_partition_files(self, partition: str, limit: Optional[int] = None):
         pass
 
     @abstractmethod
-    def list_partitions(self, **kwargs):
+    def list_partitions(self):
         pass
 
 
+MAX_LENGTH = 65_535
+
+
 @ray.remote
-class MilvusDB(ABCVectorDB):
-    """
-    MilvusDB is a concrete class to interact with a Milvus database for vector storage and retrieval.
-    Attributes:
-        logger: Logger instance for logging information.
-        embeddings: Embeddings to be used for vector storage.
-        port: Port number of the Milvus server.
-        host: Host address of the Milvus server.
-        client: Milvus client instance.
-        sparse_embeddings: Sparse embeddings for hybrid mode.
-        index_params: Parameters for indexing.
-        default_collection_name: Default collection name.
-        _collection_name: Internal collection name.
-        vector_store: Vector store instance.
-    Methods:
-        collection_name: Property to get and set the collection name.
-        get_collections: Asynchronously get a list of collections.
-        async_search: Asynchronously search for documents based on a query.
-        async_multy_query_search: Asynchronously search for documents based on multiple queries.
-        async_add_documents: Asynchronously add documents to the collection.
-        get_file_points: Get points associated with a file from Milvus.
-        file_exists: Check if a file exists in the collection.
-        collection_exists: Check if a collection exists in Milvus.
-        delete_points: Delete points from Milvus.
-        uri: URI of the Milvus server.
-    """
-
+class MilvusDB(BaseVectorDB):
     def __init__(self):
-        """
-        Initialize Milvus.
-
-        Args:
-            host (str): The host of the Milvus server.
-            port (int): The port of the Milvus server.
-            collection_name (str): The name of the collection in the Milvus database.
-            embeddings (list): The embeddings.
-        """
-
         from config import load_config
         from utils.logger import get_logger
 
         self.config = load_config()
         self.logger = get_logger()
 
-        self.embeddings = OpenAIEmbeddings(
-            model=self.config.embedder.get("model_name"),
+        # init milvus clients
+        self.port = self.config.vectordb.get("port")
+        self.host = self.config.vectordb.get("host")
+        uri = f"http://{self.host}:{self.port}"
+        self.uri = uri
+        self._client = MilvusClient(uri=uri)
+        self._async_client = AsyncMilvusClient(uri=uri)
+
+        # embedder
+        self.embedding_model = self.config.embedder.get("model_name")
+        self.embedder = AsyncOpenAI(
             base_url=self.config.embedder.get("base_url"),
             api_key=self.config.embedder.get("api_key"),
         )
-        self.port = self.config.vectordb.get("port")
-        self.host = self.config.vectordb.get("host")
-        self.uri = f"http://{self.host}:{self.port}"
-        self.client = MilvusClient(uri=self.uri)
-        self.sparse_embeddings = None
-        self.hybrid_mode = self.config.vectordb.get("hybrid_mode", True)
-        if self.hybrid_mode:
-            self.sparse_embeddings = BM25BuiltInFunction(enable_match=True)
 
-        index_params = None
-        if self.hybrid_mode:
-            index_params = INDEX_PARAMS
-        else:
-            index_params = {"metric_type": "COSINE", "index_type": "FLAT"}
+        # search and index settings
+        self.hybrid_search = self.config.vectordb.get("hybrid_search", True)
+        self.schema = self._create_schema()
 
-        self.index_params = index_params
-        # Initialize collection-related attributes
-        self.default_collection_name = None
-        self._collection_name = None
-        self.vector_store = None
-        self.partition_file_manager: PartitionFileManager = None
-        self.default_partition = "_default"
+        # partition related params
         self.rdb_host = self.config.rdb.host
         self.rdb_port = self.config.rdb.port
         self.rdb_user = self.config.rdb.user
         self.rdb_password = self.config.rdb.password
+        self.partition_file_manager: PartitionFileManager = None
 
-        # Set the initial collection name (if provided)
-        collection_name = self.config.vectordb.collection_name
-        if collection_name:
-            self.default_collection_name = collection_name
-            self.collection_name = collection_name
+        # Initialize collection-related attributes
+        self._collection_name = None
+        collection_name = self.config.vectordb.get("collection_name", "vdb_test")
+        self.collection_name = collection_name
 
     @property
     def collection_name(self):
@@ -185,156 +149,178 @@ class MilvusDB(ABCVectorDB):
     @collection_name.setter
     def collection_name(self, name: str):
         if not name:
-            if self.default_collection_name is None:
-                raise ValueError("Collection name cannot be empty.")
-            name = self.default_collection_name
+            raise ValueError("Collection `name` cannot be empty.")
 
-        self.vector_store = Milvus(
-            connection_args={"uri": self.uri},
-            collection_name=name,
-            embedding_function=self.embeddings,
-            auto_id=True,
-            index_params=self.index_params,
-            primary_field="_id",
-            enable_dynamic_field=True,
-            partition_key_field="partition",
-            builtin_function=self.sparse_embeddings,
-            vector_field=["sparse", "vector"] if self.hybrid_mode else None,
-            consistency_level="Strong",
-        )
+        self.logger = self.logger.bind(collection=name, database="Milvus")
+
+        index_params = self._create_index()
+
+        if self._client.has_collection(name):
+            self.logger.warning(f"Collection `{name}` already exists. Loading it.")
+        else:
+            self.logger.info("Creating empty collection")
+            schema = self._create_schema()
+            consistency_level = "Strong"
+            try:
+                self._client.create_collection(
+                    collection_name=name,
+                    schema=schema,
+                    consistency_level=consistency_level,
+                    index_params=index_params,
+                    enable_dynamic_field=True,
+                )
+            except MilvusException as e:
+                self.logger.exception(
+                    f"Failed to create collection `{name}`", error=str(e)
+                )
+                raise e
+
+        try:
+            self._client.load_collection(name)
+
+        except MilvusException as e:
+            self.logger.exception(f"Failed to load collection `{name}`", error=str(e))
+            raise e
 
         self.partition_file_manager = PartitionFileManager(
             database_url=f"postgresql://{self.rdb_user}:{self.rdb_password}@{self.rdb_host}:{self.rdb_port}/partitions_for_collection_{name}",
             logger=self.logger,
         )
-
-        self.logger = self.logger.bind(collection=name)
         self.logger.info("Milvus collection loaded.")
-
-        if self.default_collection_name is None:
-            self.default_collection_name = name
-            self.logger.info(f"Default collection name set to `{name}`.")
         self._collection_name = name
 
-    async def get_collections(self) -> list[str]:
-        return self.client.list_collections()
+    @property
+    def embedding_dimension(self):
+        client = OpenAI(
+            base_url=self.config.embedder.get("base_url"),
+            api_key=self.config.embedder.get("api_key"),
+        )
+        embedding_vect = (
+            client.embeddings.create(
+                model=self.embedding_model,
+                input=["test"],
+            )
+            .data[0]
+            .embedding
+        )
+        return len(embedding_vect)
 
-    async def async_search(
-        self,
-        query: str,
-        partition: list[str],
-        top_k: int = 5,
-        similarity_threshold: int = 0.80,
-        filter: Optional[dict] = {},
-    ) -> list[Document]:
-        """
-        Perform an asynchronous search on the vector store with a given query.
+    def _create_schema(self):
+        self.logger.info("Creating Schema")
+        schema = self._client.create_schema(enable_dynamic_field=True)
+        schema.add_field(
+            field_name="_id", datatype=DataType.INT64, is_primary=True, auto_id=True
+        )
+        schema.add_field(
+            field_name="text",
+            datatype=DataType.VARCHAR,
+            enable_analyzer=True,
+            enable_match=True,
+            max_length=MAX_LENGTH,
+        )
 
-        Args:
-            query (str): The search query string.
-            top_k (int, optional): The number of top results to return. Defaults to 5.
-            similarity_threshold (int, optional): The minimum similarity score threshold for results. Defaults to 0.80.
-            collection_name (Optional[str], optional): The name of the collection to search in. If None, the default collection name is used. Defaults to None.
+        schema.add_field(
+            field_name="partition",
+            datatype=DataType.VARCHAR,
+            max_length=MAX_LENGTH,
+            is_partition_key=True,
+        )
 
-        Returns:
-            list[Document]: A list of documents that match the search query.
+        schema.add_field(
+            field_name="file_id",
+            datatype=DataType.VARCHAR,
+            max_length=MAX_LENGTH,
+        )
 
-        Raises:
-            ValueError: If no collection name is provided and no default collection name is set.
-            ValueError: If the specified collection does not exist.
-        """
+        schema.add_field(
+            field_name="vector",
+            datatype=DataType.FLOAT_VECTOR,
+            dim=self.embedding_dimension,
+        )
 
-        expr_parts = []
+        if self.hybrid_search:
+            # Add sparse field for BM25 - this will be auto-generated
+            schema.add_field(
+                field_name="sparse",
+                datatype=DataType.SPARSE_FLOAT_VECTOR,
+                index_type="SPARSE_INVERTED_INDEX",
+            )
 
-        if partition != ["all"]:
-            expr_parts.append(f"partition in {partition}")
+            # BM25 function to auto-generate sparse embeddings
+            bm25_function = Function(
+                name="text_bm25_emb",
+                function_type=FunctionType.BM25,
+                input_field_names=["text"],
+                output_field_names=["sparse"],
+            )
 
-        for key, value in filter.items():
-            expr_parts.append(f"{key} == '{value}'")
+            # Add the function to our schema
+            schema.add_function(bm25_function)
+        return schema
 
-        # Join all parts with " and " only if there are multiple conditions
-        expr = " and ".join(expr_parts) if expr_parts else ""
+    def _create_index(self):
+        self.logger.info("Creating Index")
+        index_params = self._client.prepare_index_params()
+        # Add index for file_id field
+        index_params.add_index(
+            field_name="file_id",
+            index_type="INVERTED",
+            index_name="file_id_idx",
+        )
 
-        SEARCH_PARAMS = [
-            {
-                "metric_type": "COSINE",
-                "params": {
-                    "ef": 20,
-                    "radius": similarity_threshold,
-                    "range_filter": 1.0,
-                },
+        # ADD index for partition field
+        index_params.add_index(
+            field_name="partition", index_type="INVERTED", index_name="partition_idx"
+        )
+
+        # Add index for vector field
+        index_params.add_index(
+            field_name="vector",
+            index_type="HNSW",
+            metric_type="COSINE",
+            index_params={"M": 128, "efConstruction": 256, "metric_type": "COSINE"},
+        )
+
+        # Add index for sparase field
+        index_params.add_index(
+            field_name="sparse",
+            index_name="sparse_idx",
+            index_type="SPARSE_INVERTED_INDEX",
+            index_params={
+                "metric_type": "BM25",
+                "inverted_index_algo": "DAAT_MAXSCORE",
+                "bm25_k1": 1.2,
+                "bm25_b": 0.75,
             },
-            {"metric_type": "BM25", "params": {"drop_ratio_build": 0.2}},
-        ]
+        )
+        return index_params
 
-        # "params": {"drop_ratio_build": 0.2, "bm25_k1": 1.2, "bm25_b": 0.75},
+    async def list_collections(self) -> list[str]:
+        return self._client.list_collections()
 
-        if self.hybrid_mode:
-            docs_scores = await self.vector_store.asimilarity_search_with_score(
-                query=query,
-                k=top_k,
-                fetch_k=top_k,
-                ranker_type="rrf",
-                ranker_params={"k": 100},
-                expr=expr,
-                param=SEARCH_PARAMS,
+    async def __embed_documents(self, chunks: list[Document]) -> list[dict]:
+        """
+        Asynchronously embed documents using the configured embedder.
+        """
+        try:
+            output = []
+            texts = [chunk.page_content for chunk in chunks]
+            embeddings = await self.embedder.embeddings.create(
+                model=self.embedding_model,
+                input=texts,
             )
-        else:
-            docs_scores = (
-                await self.vector_store.asimilarity_search_with_relevance_scores(
-                    query=query,
-                    k=top_k,
-                    score_threshold=similarity_threshold,
-                    expr=expr,
+            for i, chunk in enumerate(chunks):
+                output.append(
+                    {
+                        "text": chunk.page_content,
+                        "vector": embeddings.data[i].embedding,
+                        **chunk.metadata,
+                    }
                 )
-            )
-
-        for doc, score in docs_scores:
-            doc.metadata["score"] = score
-
-        docs = [doc for doc, score in docs_scores]
-
-        return docs
-
-    async def async_multy_query_search(
-        self,
-        partition: list[str],
-        queries: list[str],
-        top_k_per_query: int = 5,
-        similarity_threshold: int = 0.80,
-    ) -> list[Document]:
-        """
-        Perform multiple asynchronous search queries concurrently and return the results.
-        Args:
-            queries (list[str]): A list of search query strings.
-            top_k_per_query (int, optional): The number of top results to return per query. Defaults to 5.
-            similarity_threshold (int, optional): The similarity threshold for filtering results. Defaults to 0.80.
-            collection_name (Optional[str], optional): The name of the collection to search within. Defaults to None.
-        Returns:
-            list[Document]: A list of unique documents retrieved from the search queries.
-        """
-        # Gather all search tasks concurrently
-        search_tasks = [
-            self.async_search(
-                query=query,
-                partition=partition,
-                top_k=top_k_per_query,
-                similarity_threshold=similarity_threshold,
-            )
-            for query in queries
-        ]
-        retrieved_results = await asyncio.gather(*search_tasks)
-        # Process the retrieved documents
-        retrieved_chunks = {}
-        for retrieved in retrieved_results:
-            if retrieved:
-                for document in retrieved:
-                    retrieved_chunks[document.metadata["_id"]] = document
-
-        retrieved_chunks = list(retrieved_chunks.values())
-        retrieved_chunks.sort(key=lambda v: v.metadata["score"], reverse=True)
-
-        return retrieved_chunks
+            return output
+        except Exception as e:
+            self.logger.exception("Error embedding documents", error=str(e))
+            raise e
 
     async def async_add_documents(self, chunks: list[Document]) -> None:
         """Asynchronously add documents to the vector store."""
@@ -346,19 +332,28 @@ class MilvusDB(ABCVectorDB):
                 file_metadata.get("file_id"),
                 file_metadata.get("partition"),
             )
+            self.logger.bind(
+                partition=partition,
+                file_id=file_id,
+                filename=file_metadata.get("filename"),
+            )
 
             # check if this file_id exists
             res = self.partition_file_manager.file_exists_in_partition(
                 file_id=file_id, partition=partition
             )
             if res:
-                raise ValueError(
-                    f"No Insertion: This File ({file_id}) already exists in Partition ({partition})"
+                error_msg = (
+                    f"This File ({file_id}) already exists in Partition ({partition})"
                 )
+                self.logger.error(error_msg)
+                raise ValueError(error_msg)
 
-            await self.vector_store.aadd_documents(chunks)
-            # asyncio.create_task(self.vector_store.aadd_documents(chunks)) # for prods
-
+            entities = await self.__embed_documents(chunks)
+            await self._async_client.insert(
+                collection_name=self.collection_name,
+                data=entities,
+            )
             # insert file_id and partition into partition_file_manager
             self.partition_file_manager.add_file_to_partition(
                 file_id=file_id, partition=partition, file_metadata=file_metadata
@@ -367,7 +362,124 @@ class MilvusDB(ABCVectorDB):
             self.logger.exception(
                 "Error while adding documents to Milvus", error=str(e)
             )
+            raise
+
+    async def async_multi_query_search(
+        self,
+        queries: list[str],
+        top_k_per_query: int = 5,
+        similarity_threshold: int = 0.80,
+        collection_name: Optional[str] = None,
+    ) -> list[Document]:
+        """
+        Perform multiple asynchronous search queries concurrently and return the unique retrieved documents.
+
+        Args:
+            queries (list[str]): A list of search query strings.
+            top_k_per_query (int, optional): The number of top results to retrieve per query. Defaults to 5.
+            similarity_threshold (int, optional): The similarity threshold for filtering results. Defaults to 0.80.
+            collection_name (Optional[str], optional): The name of the collection to search within. Defaults to None.
+
+        Returns:
+            list[Document]: A list of unique retrieved documents.
+        """
+        # Set the collection name
+        self.collection_name = collection_name
+        # Gather all search tasks concurrently
+        search_tasks = [
+            self.async_search(
+                query=query,
+                top_k=top_k_per_query,
+                similarity_threshold=similarity_threshold,
+                collection_name=collection_name,
+            )
+            for query in queries
+        ]
+        retrieved_results = await asyncio.gather(*search_tasks)
+        retrieved_chunks = {}
+        # Process the retrieved documents
+        for retrieved in retrieved_results:
+            if retrieved:
+                for document in retrieved:
+                    retrieved_chunks[document.metadata["_id"]] = document
+        return list(retrieved_chunks.values())
+
+    async def __embed_query(self, query: str) -> list[float]:
+        """
+        Asynchronously embed a query using the configured embedder.
+        """
+        try:
+            embedding = await self.embedder.embeddings.create(
+                model=self.embedding_model,
+                input=[query],
+            )
+            return embedding.data[0].embedding
+        except OpenAI as e:
+            self.logger.exception("Error embedding query", error=str(e))
             raise e
+
+    async def async_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        similarity_threshold: int = 0.80,
+        partition: list[str] = None,
+        filter: Optional[dict] = None,
+    ) -> list[Document]:
+        expr_parts = []
+        if partition != ["all"]:
+            expr_parts.append(f"partition in {partition}")
+
+        if filter:
+            for key, value in filter.items():
+                expr_parts.append(f"{key} == '{value}'")
+
+        # Join all parts with " and " only if there are multiple conditions
+        expr = " and ".join(expr_parts) if expr_parts else ""
+
+        query_vector = await self.__embed_query(query)
+        vector_param = {
+            "data": [query_vector],
+            "anns_field": "vector",
+            "param": {
+                "metric_type": "COSINE",
+                "params": {
+                    "ef": 64,
+                    "radius": similarity_threshold,
+                    "range_filter": 1.0,
+                },
+            },
+            "limit": top_k,
+            "expr": expr,
+        }
+        if self.hybrid_search:
+            sparse_param = {
+                "data": [query],
+                "anns_field": "sparse",
+                "param": {"metric_type": "BM25", "params": {"drop_ratio_build": 0.2}},
+                "limit": top_k,
+                "expr": expr,
+            }
+            reqs = [
+                AnnSearchRequest(**vector_param),
+                AnnSearchRequest(**sparse_param),
+            ]
+            response = await self._async_client.hybrid_search(
+                collection_name=self.collection_name,
+                reqs=reqs,
+                ranker=RRFRanker(100),
+                output_fields=["*"],
+                limit=top_k,
+            )
+        else:
+            response = await self._async_client.search(
+                collection_name=self.collection_name,
+                output_fields=["*"],
+                limit=top_k,
+                **vector_param,
+            )
+
+        return _parse_documents_from_search_results(response)
 
     def get_file_points(self, file_id: str, partition: str, limit: int = 100):
         """
@@ -397,7 +509,7 @@ class MilvusDB(ABCVectorDB):
             results = []
 
             while True:
-                response = self.client.query(
+                response = self._client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
                     output_fields=["_id"],  # Only fetch IDs
@@ -441,7 +553,7 @@ class MilvusDB(ABCVectorDB):
             )
 
             while True:
-                response = self.client.query(
+                response = self._client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
                     limit=limit,
@@ -480,8 +592,9 @@ class MilvusDB(ABCVectorDB):
         Returns:
             Document: The retrieved chunk.
         """
+        log = self.logger.bind(chunk_id=chunk_id)
         try:
-            response = self.client.query(
+            response = self._client.query(
                 collection_name=self.collection_name,
                 filter=f"_id == {chunk_id}",
                 limit=1,
@@ -496,8 +609,9 @@ class MilvusDB(ABCVectorDB):
                     },
                 )
             return None
-        except Exception:
-            self.logger.exception("Couldn't get chunk by ID", chunk_id=chunk_id)
+        except Exception as e:
+            log.exception("Couldn't get chunk by ID")
+            raise e
 
     def delete_file_points(self, points: list, file_id: str, partition: str):
         """
@@ -512,7 +626,7 @@ class MilvusDB(ABCVectorDB):
                     f"This File ({file_id}) doesn't exist in Partition ({partition})"
                 )
 
-            self.client.delete(collection_name=self.collection_name, ids=points)
+            self._client.delete(collection_name=self.collection_name, ids=points)
             self.partition_file_manager.remove_file_from_partition(
                 file_id=file_id, partition=partition
             )
@@ -534,10 +648,10 @@ class MilvusDB(ABCVectorDB):
             )
             return False
 
-    def get_partition(self, partition: str):
+    def list_partition_files(self, partition: str, limit: Optional[int] = None):
         try:
-            partition_dict = self.partition_file_manager.get_partition(
-                partition=partition
+            partition_dict = self.partition_file_manager.list_partition_files(
+                partition=partition, limit=limit
             )
             return partition_dict
 
@@ -545,9 +659,9 @@ class MilvusDB(ABCVectorDB):
             self.logger.exception("Failed get this partition.", partition=partition)
             raise
 
-    def list_partitions(self, **kwargs):
+    def list_partitions(self):
         try:
-            return self.partition_file_manager.list_partitions(**kwargs)
+            return self.partition_file_manager.list_partitions()
         except Exception as e:
             self.logger.exception(f"Failed to list partitions: {e}")
             raise
@@ -556,7 +670,7 @@ class MilvusDB(ABCVectorDB):
         """
         Check if a collection exists in Milvus
         """
-        return self.vector_store.client.has_collection(collection_name)
+        return self._client.has_collection(collection_name=collection_name)
 
     def delete_partition(self, partition: str):
         log = self.logger.bind(partition=partition)
@@ -565,78 +679,29 @@ class MilvusDB(ABCVectorDB):
             return False
 
         try:
-            count = self.client.delete(
+            count = self._client.delete(
                 collection_name=self.collection_name,
                 filter=f"partition == '{partition}'",
             )
 
             self.partition_file_manager.delete_partition(partition)
-
             log.info("Deleted points from partition", count=count.get("delete_count"))
 
             return True
-        except Exception:
-            log.exception("Failed to delete partition")
+        except Exception as e:
+            log.exception("Failed to delete partition", error=str(e))
             return False
 
     def partition_exists(self, partition: str):
         """
         Check if a partition exists in Milvus
         """
+        log = self.logger.bind(partition=partition)
         try:
             return self.partition_file_manager.partition_exists(partition=partition)
-
-        except Exception:
-            self.logger.exception(
-                "Partition existence check failed.", partition=partition
-            )
-            return False
-
-    def sample_chunk_ids(
-        self, partition: str, n_ids: int = 100, seed: int | None = None
-    ):
-        """
-        Sample chunk IDs from a given partition."""
-
-        try:
-            if not self.partition_file_manager.partition_exists(partition):
-                return []
-
-            file_ids = self.partition_file_manager.sample_file_ids(
-                partition=partition, n_file_id=10_000
-            )
-            if not file_ids:
-                return []
-
-            # Create a filter expression for the query
-            filter_expression = f"partition == '{partition}' and file_id in {file_ids}"
-
-            ids = []
-            iterator = self.client.query_iterator(
-                collection_name=self.collection_name,
-                filter=filter_expression,
-                batch_size=16000,
-                output_fields=["_id"],
-            )
-
-            ids = []
-            while True:
-                result = iterator.next()
-                if not result:
-                    iterator.close()
-                    break
-
-                ids.extend([res["_id"] for res in result])
-
-            random.seed(seed)
-            sampled_ids = random.sample(ids, min(n_ids, len(ids)))
-            return sampled_ids
-
         except Exception as e:
-            self.logger.exception(
-                f"Error in `sample_chunks` for partition {partition}: {e}"
-            )
-            raise e
+            log.exception("Partition existence check failed.", error=str(e))
+            return False
 
     def list_all_chunk(self, partition: str, include_embedding: bool = True):
         """
@@ -663,7 +728,7 @@ class MilvusDB(ABCVectorDB):
                 return metadata
 
             chunks = []
-            iterator = self.client.query_iterator(
+            iterator = self._client.query_iterator(
                 collection_name=self.collection_name,
                 filter=filter_expression,
                 batch_size=16000,
@@ -694,344 +759,37 @@ class MilvusDB(ABCVectorDB):
             raise
 
 
-# class QdrantDB(ABCVectorDB):
-#     """
-#     QdrantDB is a class that provides an interface to interact with a Qdrant vector database. It allows for the initialization of a Qdrant client, setting and getting collection names, performing asynchronous searches, adding documents, retrieving file points, deleting points, and checking for the existence of files and collections.
-#     Attributes:
-#         logger: Logger instance for logging information.
-#         embeddings: Embeddings used for vector storage.
-#         port: Port number of the Qdrant server.
-#         host: Host address of the Qdrant server.
-#         client: Qdrant client instance.
-#         sparse_embeddings: Sparse embeddings for hybrid retrieval mode.
-#         retrieval_mode: Mode of retrieval (HYBRID or DENSE).
-#         default_collection_name: Default collection name.
-#         _collection_name: Current collection name.
-#         vector_store: Instance of QdrantVectorStore.
-#     Methods:
-#         __init__(host, port, embeddings, collection_name, logger, hybrid_mode):
-#             Initializes the QdrantDB instance with the given parameters.
-#         collection_name:
-#             Property to get and set the collection name.
-#         get_collections() -> list[str]:
-#             Asynchronously retrieves a list of collection names from the Qdrant database.
-#         async_search(query, top_k, similarity_threshold, collection_name) -> list[Document]:
-#             Asynchronously searches for documents in the specified collection based on the query.
-#         async_multy_query_search(queries, top_k_per_query, similarity_threshold, collection_name) -> list[Document]:
-#             Asynchronously performs multiple queries and retrieves documents for each query.
-#         async_add_documents(chunks, collection_name) -> None:
-#             Asynchronously adds documents to the specified collection.
-#         get_file_points(filter, collection_name, limit) -> list:
-#             Retrieves points associated with a file from the Qdrant database based on the filter.
-#         delete_points(points, collection_name) -> None:
-#             Deletes points from the specified collection in the Qdrant database.
-#         file_exists(file_name, collection_name) -> bool:
-#             Checks if a file exists in the specified collection in the Qdrant database.
-#         collection_exists(collection_name) -> bool:
-#             Checks if a collection exists in the Qdrant database.
-#     """
+def _parse_documents_from_search_results(search_results):
+    if not search_results:
+        return []
 
-#     def __init__(
-#         self,
-#         host,
-#         port,
-#         embeddings: HuggingFaceBgeEmbeddings | HuggingFaceEmbeddings = None,
-#         collection_name: str = None,
-#         logger=None,
-#         hybrid_mode=True,
-#         **kwargs,
-#     ):
-#         """
-#         Initialize Qdrant_Connector.
+    ret = []
+    excluded_keys = ["text", "vector"]
+    for result in search_results[0]:
+        entity = result.get("entity", {})
+        metadata = {k: v for k, v in entity.items() if k not in excluded_keys}
+        doc = Document(
+            page_content=entity["text"],
+            metadata=metadata,
+        )
+        ret.append(doc)
 
-#         Args:
-#             host (str): The host of the Qdrant server.
-#             port (int): The port of the Qdrant server.
-#             collection_name (str): The name of the collection in the Qdrant database.
-#             embeddings (list): The embeddings.
-#         """
-
-#         self.logger = logger
-#         self.embeddings: Union[HuggingFaceBgeEmbeddings, HuggingFaceEmbeddings] = (
-#             embeddings
-#         )
-#         self.port = port
-#         self.host = host
-#         self.client = QdrantClient(
-#             port=port,
-#             host=host,
-#             prefer_grpc=False,
-#         )
-
-#         self.sparse_embeddings = (
-#             FastEmbedSparse(model_name="Qdrant/bm25") if hybrid_mode else None
-#         )
-#         self.retrieval_mode = (
-#             RetrievalMode.HYBRID if hybrid_mode else RetrievalMode.DENSE
-#         )
-#         logger.info(f"VectorDB retrieval mode: {self.retrieval_mode}")
-
-#         # Initialize collection-related attributes
-#         self.default_collection_name = None
-#         self._collection_name = None
-#         self.vector_store = None
-
-#         # Set the initial collection name (if provided)
-#         if collection_name:
-#             self.default_collection_name = collection_name
-#             self.collection_name = collection_name
-
-#     @property
-#     def collection_name(self):
-#         return self._collection_name
-
-#     @collection_name.setter
-#     def collection_name(self, name: str):
-#         if not name:
-#             if self.default_collection_name is None:
-#                 raise ValueError("Collection name cannot be empty.")
-#             name = self.default_collection_name
-
-#         if self.client.collection_exists(collection_name=name):
-#             self.vector_store = QdrantVectorStore(
-#                 client=self.client,
-#                 collection_name=name,
-#                 embedding=self.embeddings,
-#                 sparse_embedding=self.sparse_embeddings,
-#                 retrieval_mode=self.retrieval_mode,
-#             )
-#             self.logger.warning(f"Collection `{name}` LOADED.")
-#         else:
-#             self.vector_store = QdrantVectorStore.construct_instance(
-#                 embedding=self.embeddings,
-#                 sparse_embedding=self.sparse_embeddings,
-#                 collection_name=name,
-#                 client_options={"port": self.port, "host": self.host},
-#                 retrieval_mode=self.retrieval_mode,
-#             )
-#             self.logger.debug(f"Collection `{name}` CREATED.")
-
-#         if self.default_collection_name is None:
-#             self.default_collection_name = name
-#             self.logger.info(f"Default collection name set to `{name}`.")
-#         self._collection_name = name
-
-#     async def get_collections(self) -> list[str]:
-#         return [c.name for c in self.client.get_collections().collections]
-
-#     async def async_search(
-#         self,
-#         query: str,
-#         top_k: int = 5,
-#         similarity_threshold: int = 0.80,
-#         collection_name: Optional[str] = None,
-#     ) -> list[Document]:
-#         """
-#         Perform an asynchronous search on the vector database.
-
-#         Args:
-#             query (str): The search query string.
-#             top_k (int, optional): The number of top results to return. Defaults to 5.
-#             similarity_threshold (int, optional): The minimum similarity score threshold for results. Defaults to 0.80.
-#             collection_name (Optional[str], optional): The name of the collection to search in. If None, the default collection name is used. Defaults to None.
-
-#         Returns:
-#             list[Document]: A list of documents that match the search query.
-
-#         Raises:
-#             ValueError: If no collection name is provided and no default collection name is set.
-#             ValueError: If the specified collection does not exist.
-#         """
-#         if collection_name is None:
-#             if self.default_collection_name is None:
-#                 raise ValueError(
-#                     "Collection name not provided and no default collection name set."
-#                 )
-#             self.collection_name = self.default_collection_name
-#         elif not self.collection_exists(collection_name):
-#             raise ValueError(f"Collection {collection_name} does not exist.")
-#         else:
-#             self.collection_name = collection_name
-#         docs_scores = await self.vector_store.asimilarity_search_with_relevance_scores(
-#             query=query, k=top_k, score_threshold=similarity_threshold
-#         )
-#         docs = [doc for doc, score in docs_scores]
-#         return docs
-
-#     async def async_multy_query_search(
-#         self,
-#         queries: list[str],
-#         top_k_per_query: int = 5,
-#         similarity_threshold: int = 0.80,
-#         collection_name: Optional[str] = None,
-#     ) -> list[Document]:
-#         """
-#         Perform multiple asynchronous search queries concurrently and return the unique retrieved documents.
-
-#         Args:
-#             queries (list[str]): A list of search query strings.
-#             top_k_per_query (int, optional): The number of top results to retrieve per query. Defaults to 5.
-#             similarity_threshold (int, optional): The similarity threshold for filtering results. Defaults to 0.80.
-#             collection_name (Optional[str], optional): The name of the collection to search within. Defaults to None.
-
-#         Returns:
-#             list[Document]: A list of unique retrieved documents.
-#         """
-#         # Set the collection name
-#         self.collection_name = collection_name
-#         # Gather all search tasks concurrently
-#         search_tasks = [
-#             self.async_search(
-#                 query=query,
-#                 top_k=top_k_per_query,
-#                 similarity_threshold=similarity_threshold,
-#                 collection_name=collection_name,
-#             )
-#             for query in queries
-#         ]
-#         retrieved_results = await asyncio.gather(*search_tasks)
-#         retrieved_chunks = {}
-#         # Process the retrieved documents
-#         for retrieved in retrieved_results:
-#             if retrieved:
-#                 for document in retrieved:
-#                     retrieved_chunks[document.metadata["_id"]] = document
-#         return list(retrieved_chunks.values())
-
-#     async def async_add_documents(
-#         self, chunks: list[Document], collection_name: Optional[str] = None
-#     ) -> None:
-#         """
-#         Asynchronously add documents to the vector store.
-#         Args:
-#             chunks (list[Document]): A list of Document objects to be added.
-#             collection_name (Optional[str]): The name of the collection to which the documents will be added.
-#                                              If None, the default collection name will be used.
-#         Returns:
-#             None
-#         """
-#         # Set the collection name
-#         self.collection_name = collection_name
-
-#         await self.vector_store.aadd_documents(chunks)
-#         self.logger.debug("CHUNKS INSERTED")
-
-#     def get_file_points(
-#         self, filter: dict, collection_name: Optional[str] = None, limit: int = 100
-#     ):
-#         """
-#         Retrieve file points from the vector database based on a filter.
-#         Args:
-#             filter (dict): A dictionary containing the filter key and value.
-#             collection_name (Optional[str], optional): The name of the collection to search in. Defaults to None.
-#             limit (int, optional): The maximum number of results to return. Defaults to 100.
-#         Returns:
-#             List[str]: A list of result IDs that match the filter criteria.
-#         Raises:
-#             Exception: If there is an error during the retrieval process.
-#         """
-
-#         try:
-#             # Scroll through all vectors
-#             has_more = True
-#             offset = None
-#             results = []
-
-#             key = next(iter(filter))
-#             value = filter[key]
-
-#             while has_more:
-#                 response = self.client.scroll(
-#                     collection_name=collection_name
-#                     if collection_name
-#                     else self.default_collection_name,
-#                     scroll_filter=models.Filter(
-#                         must=[
-#                             models.FieldCondition(
-#                                 key=f"metadata.{key}",
-#                                 match=models.MatchValue(value=value),
-#                             )
-#                         ]
-#                     ),
-#                     limit=limit,
-#                     offset=offset,
-#                 )
-
-#                 # Add points that contain the filename in metadata.source
-#                 results.extend(response[0])
-#                 has_more = response[1]  # Check if there are more results
-#                 offset = response[1] if has_more else None
-
-#                 if limit == 1:
-#                     return [results[0].id] if results else []
-
-#             # Return list of result ids
-#             return [res.id for res in results]
-
-#         except Exception as e:
-#             self.logger.error(f"Couldn't get file points for {key} {value}: {e}")
-#             raise
-
-#     def delete_file_points(self, points: list, collection_name: Optional[str] = None):
-#         """
-#         Delete points from Qdrant
-#         """
-#         try:
-#             self.client.delete(
-#                 collection_name=collection_name
-#                 if collection_name
-#                 else self.default_collection_name,
-#                 points_selector=models.PointIdsList(points=points),
-#             )
-#         except Exception as e:
-#             self.logger.error(f"Error in `delete_points`: {e}")
-
-#     def file_exists(self, file_name: str, collection_name: Optional[str] = None):
-#         """
-#         Check if a file exists in Qdrant
-#         """
-#         try:
-#             # Get points associated with the file name
-#             points = self.get_file_points(
-#                 {"file_name": file_name}, collection_name, limit=1
-#             )
-#             return True if points else False
-#         except Exception as e:
-#             self.logger.error(f"Error in `file_exists` for {file_name}: {e}")
-#             return False
-
-#     def collection_exists(self, collection_name: str):
-#         """
-#         Check if a collection exists in Qdrant
-#         """
-#         return self.client.collection_exists(collection_name)
+    return ret
 
 
 class ConnectorFactory:
-    CONNECTORS = {
+    CONNECTORS: dict[BaseVectorDB] = {
         "milvus": MilvusDB,
         # "qdrant": QdrantDB,
     }
 
     @staticmethod
-    def create_vdb(config, logger, embeddings) -> ABCVectorDB:
-        if not config["vectordb"]["enable"]:
-            logger.info("Vector database is not enabled. Skipping initialization.")
-            return None
+    def get_vectordb_cls():
+        from config import load_config
 
-        # Extract parameters
-        dbconfig = dict(config.vectordb)
-        name = dbconfig.pop("connector_name")
-        dbconfig.pop("enable")
+        config = load_config()
+        name = config.vectordb.get("connector_name")
         vdb_cls = ConnectorFactory.CONNECTORS.get(name)
         if not vdb_cls:
             raise ValueError(f"VECTORDB '{name}' is not supported.")
-
-        dbconfig["embeddings"] = embeddings
-        dbconfig["logger"] = logger
-        dbconfig["rdb_host"] = "rdb"
-        dbconfig["rdb_port"] = config["rdb"].port
-        dbconfig["rdb_user"] = config["rdb"].user
-        dbconfig["rdb_password"] = config["rdb"].password
-
-        return vdb_cls(**dbconfig)
+        return vdb_cls
