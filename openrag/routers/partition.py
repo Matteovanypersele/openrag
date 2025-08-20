@@ -11,10 +11,6 @@ router = APIRouter()
 indexer = get_indexer()
 vectordb = get_vectordb()
 
-indexer = get_indexer()
-vectordb = get_vectordb()
-
-
 def _quote_param_value(s: str) -> str:
     return quote(s, safe="")
 
