@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_indexer
 from utils.logger import get_logger
@@ -9,7 +9,6 @@ logger = get_logger()
 
 router = APIRouter()
 
-indexer = get_indexer()
 
 @router.get("")
 async def search_multiple_partitions(
@@ -19,6 +18,7 @@ async def search_multiple_partitions(
     ),
     text: str = Query(..., description="Text to search semantically"),
     top_k: int = Query(5, description="Number of top results to return"),
+    indexer=Depends(get_indexer),
 ):
     log = logger.bind(partitions=partitions, query=text, top_k=top_k)
     try:
@@ -54,6 +54,7 @@ async def search_one_partition(
     partition: str,
     text: str = Query(..., description="Text to search semantically"),
     top_k: int = Query(5, description="Number of top results to return"),
+    indexer=Depends(get_indexer),
 ):
     log = logger.bind(partition=partition, query=text, top_k=top_k)
     try:
@@ -93,6 +94,7 @@ async def search_file(
     file_id: str,
     text: str = Query(..., description="Text to search semantically"),
     top_k: int = Query(5, description="Number of top results to return"),
+    indexer=Depends(get_indexer),
 ):
     log = logger.bind(partition=partition, file_id=file_id, query=text, top_k=top_k)
     try:

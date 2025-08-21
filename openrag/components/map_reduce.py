@@ -3,7 +3,7 @@ from openai import AsyncOpenAI
 from tqdm.asyncio import tqdm
 from utils.logger import get_logger
 
-from .utils import llmSemaphore
+from .utils import get_llm_semaphore
 
 logger = get_logger()
 
@@ -42,7 +42,7 @@ class RAGMapReduce:
         self.model = self.config.llm["model"]
 
     async def infer_llm_map(self, query, chunk: Document):
-        async with llmSemaphore:
+        async with get_llm_semaphore():
             user_prompt_map = (
                 "Voici un texte :\n" + chunk.page_content + "\n"
                 "À partir de ce document, identifie et résume de manière complète les informations utiles pour répondre à la question suivante :\n"

@@ -35,7 +35,6 @@ class DocSerializer:
         self.kwargs = kwargs
         self.kwargs["config"] = self.config
         self.save_markdown = self.config.loader.get("save_markdown", False)
-        self.task_state_manager = ray.get_actor("TaskStateManager", namespace="openrag")
 
         # Initialize loader classes:
         self.loader_classes = get_loader_classes(config=self.config)
@@ -53,7 +52,8 @@ class DocSerializer:
             partition=metadata.get("partition"),
             task_id=task_id,
         )
-        await self.task_state_manager.set_state.remote(task_id, "SERIALIZING")
+        task_state_manager = ray.get_actor("TaskStateManager", namespace="openrag")
+        await task_state_manager.set_state.remote(task_id, "SERIALIZING")
 
         log.info("Starting document serialization")
 

@@ -8,7 +8,6 @@ from openai import AsyncOpenAI
 from utils.logger import get_logger
 
 from .grader import Grader
-from .indexer import BaseVectorDB
 from .llm import LLM
 from .map_reduce import RAGMapReduce
 from .reranker import Reranker
@@ -27,12 +26,9 @@ RAG_MAP_REDUCE = os.environ.get("RAG_MAP_REDUCE", "false").lower() == "true"
 
 
 class RetrieverPipeline:
-    def __init__(self, config, vectordb: BaseVectorDB, logger=None) -> None:
+    def __init__(self, config, logger=None) -> None:
         self.config = config
         self.logger = logger
-
-        # vectordb
-        self.vectordb: BaseVectorDB = vectordb
 
         # retriever
         self.retriever: ABCRetriever = RetrieverFactory.create_retriever(
@@ -55,9 +51,7 @@ class RetrieverPipeline:
             self.grader = Grader(config, logger=self.logger)
 
     async def retrieve_docs(self, partition: list[str], query: str) -> list[Document]:
-        docs = await self.retriever.retrieve(
-            partition=partition, query=query, db=self.vectordb
-        )
+        docs = await self.retriever.retrieve(partition=partition, query=query)
         logger.debug("Documents retreived", document_count=len(docs))
         if docs:
             # grade and filter out irrelevant docs
@@ -79,14 +73,12 @@ class RetrieverPipeline:
 
 
 class RagPipeline:
-    def __init__(self, config, vectordb: BaseVectorDB, logger=None) -> None:
+    def __init__(self, config, logger=None) -> None:
         self.config = config
         self.logger = logger
 
         # retriever pipeline
-        self.retriever_pipeline = RetrieverPipeline(
-            config=config, vectordb=vectordb, logger=self.logger
-        )
+        self.retriever_pipeline = RetrieverPipeline(config=config, logger=self.logger)
 
         self.prompts_dir = Path(config.paths.prompts_dir)
         # contextualizer prompt

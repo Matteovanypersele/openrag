@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_vectordb
 from utils.logger import get_logger
@@ -7,10 +7,10 @@ logger = get_logger()
 
 # Create an APIRouter instance
 router = APIRouter()
-vectordb = get_vectordb()
+
 
 @router.get("/{extract_id}")
-async def get_extract(extract_id: str):
+async def get_extract(extract_id: str, vectordb=Depends(get_vectordb)):
     log = logger.bind(extract_id=extract_id)
     try:
         doc = await vectordb.get_chunk_by_id.remote(extract_id)

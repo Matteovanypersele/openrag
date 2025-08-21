@@ -1,13 +1,14 @@
 # Import necessary modules and classes
 from abc import ABC, abstractmethod
 from pathlib import Path
+
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from omegaconf import OmegaConf
+from utils.dependencies import get_vectordb
 
-from .indexer import BaseVectorDB
 from .utils import load_sys_template
 
 CRITERIAS = ["similarity"]
@@ -27,9 +28,7 @@ class ABCRetriever(ABC):
         pass
 
     @abstractmethod
-    async def retrieve(
-        self, partition: list[str], query: str, db: BaseVectorDB
-    ) -> list[Document]:
+    async def retrieve(self, partition: list[str], query: str) -> list[Document]:
         pass
 
 
@@ -57,8 +56,11 @@ class BaseRetriever(ABCRetriever):
         self.logger = logger
 
     async def retrieve(
-        self, partition: list[str], query: str, db: BaseVectorDB
+        self,
+        partition: list[str],
+        query: str,
     ) -> list[Document]:
+        db = get_vectordb()
         chunks = await db.async_search.remote(
             query=query,
             partition=partition,
@@ -126,9 +128,8 @@ class MultiQueryRetriever(BaseRetriever):
         except Exception as e:
             raise KeyError(f"An Error has occured: {e}")
 
-    async def retrieve(
-        self, partition: list[str], query: str, db: BaseVectorDB
-    ) -> list[Document]:
+    async def retrieve(self, partition: list[str], query: str) -> list[Document]:
+        db = get_vectordb()
         # generate different perspectives of the query
         generated_queries = await self.generate_queries.ainvoke(
             {"query": query, "k_queries": self.k_queries}
@@ -176,8 +177,11 @@ class HyDeRetriever(BaseRetriever):
         return hyde_document
 
     async def retrieve(
-        self, partition: list[str], query: str, db: BaseVectorDB
+        self,
+        partition: list[str],
+        query: str,
     ) -> list[Document]:
+        db = get_vectordb()
         hyde = await self.get_hyde(query)
         queries = [hyde]
         if self.combine:
