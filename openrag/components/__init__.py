@@ -1,6 +1,4 @@
-from config import load_config
-
-from .indexer import ConnectorFactory, Indexer, BaseVectorDB
+from .indexer import BaseVectorDB, ConnectorFactory, Indexer
 from .pipeline import RagPipeline
 
-__all__ = [load_config, RagPipeline, BaseVectorDB, Indexer, ConnectorFactory]
+__all__ = [RagPipeline, BaseVectorDB, Indexer, ConnectorFactory]

@@ -1,30 +1,24 @@
 import asyncio
-import random
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 import ray
 from langchain_core.documents.base import Document
-from pymilvus import MilvusClient
-
-from openai import AsyncOpenAI, OpenAI, OpenAIError
-
+from openai import AsyncOpenAI, OpenAI
 from pymilvus import (
     AnnSearchRequest,
+    AsyncMilvusClient,
     DataType,
+    Function,
     FunctionType,
     MilvusClient,
-    AsyncMilvusClient,
     MilvusException,
     RRFRanker,
-    Function,
 )
+from utils.logger import get_logger
 
 from .utils import PartitionFileManager
-
-
-from utils.logger import get_logger
 
 logger = get_logger()
 
@@ -322,6 +316,41 @@ class MilvusDB(BaseVectorDB):
             self.logger.exception("Error embedding documents", error=str(e))
             raise e
 
+    @staticmethod
+    def _build_expr_template_and_params(
+        partition: list[str], filter: dict
+    ) -> tuple[str, dict]:
+        """
+        Build the expression template and its parameters to be passed to a Milvus query.
+
+        Args:
+            partition (list[str]): The partitions.
+            filter (dict): The filters to be applied to the query.
+
+        Returns:
+            (str, dict): the template expression and its parameter dict.
+        """
+        assert isinstance(partition, list), (
+            "`partition` must be a list of partition names"
+        )
+
+        expr_parts = []
+        expr_params = {}
+
+        if partition != ["all"]:
+            expr_parts.append("partition in {partition}")
+            expr_params["partition"] = partition
+
+        for key, value in filter.items():
+            # This template parameter name is valid since `key` must be
+            # a valid database field name
+            value_template_param_name = key
+            expr_parts.append(f"{key} == {{{value_template_param_name}}}")
+            expr_params[value_template_param_name] = value
+
+        expr = " and ".join(expr_parts)
+        return expr, expr_params
+
     async def async_add_documents(self, chunks: list[Document]) -> None:
         """Asynchronously add documents to the vector store."""
 
@@ -426,16 +455,10 @@ class MilvusDB(BaseVectorDB):
         partition: list[str] = None,
         filter: Optional[dict] = None,
     ) -> list[Document]:
-        expr_parts = []
-        if partition != ["all"]:
-            expr_parts.append(f"partition in {partition}")
-
-        if filter:
-            for key, value in filter.items():
-                expr_parts.append(f"{key} == '{value}'")
-
-        # Join all parts with " and " only if there are multiple conditions
-        expr = " and ".join(expr_parts) if expr_parts else ""
+        expr, expr_params = self._build_expr_template_and_params(
+            partition=partition or ["all"],
+            filter=filter or {},
+        )
 
         query_vector = await self.__embed_query(query)
         vector_param = {
@@ -470,12 +493,14 @@ class MilvusDB(BaseVectorDB):
                 ranker=RRFRanker(100),
                 output_fields=["*"],
                 limit=top_k,
+                expr_params=expr_params,
             )
         else:
             response = await self._async_client.search(
                 collection_name=self.collection_name,
                 output_fields=["*"],
                 limit=top_k,
+                expr_params=expr_params,
                 **vector_param,
             )
 
@@ -502,7 +527,8 @@ class MilvusDB(BaseVectorDB):
                 return []
 
             # Adjust filter expression based on the type of value
-            filter_expression = f"partition == '{partition}' and file_id == '{file_id}'"
+            filter_expression = "partition == {partition} and file_id == {file_id}"
+            filter_params = {"partition": partition, "file_id": file_id}
 
             # Pagination parameters
             offset = 0
@@ -512,6 +538,7 @@ class MilvusDB(BaseVectorDB):
                 response = self._client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
+                    filter_params=filter_params,
                     output_fields=["_id"],  # Only fetch IDs
                     limit=limit,
                     offset=offset,
@@ -543,7 +570,8 @@ class MilvusDB(BaseVectorDB):
                 return []
 
             # Adjust filter expression based on the type of value
-            filter_expression = f"partition == '{partition}' and file_id == '{file_id}'"
+            filter_expression = "partition == {partition} and file_id == {file_id}"
+            filter_params = {"partition": partition, "file_id": file_id}
 
             # Pagination parameters
             offset = 0
@@ -556,6 +584,7 @@ class MilvusDB(BaseVectorDB):
                 response = self._client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
+                    filter_params=filter_params,
                     limit=limit,
                     offset=offset,
                 )
@@ -681,7 +710,8 @@ class MilvusDB(BaseVectorDB):
         try:
             count = self._client.delete(
                 collection_name=self.collection_name,
-                filter=f"partition == '{partition}'",
+                filter="partition == {partition}",
+                filter_params={"partition": partition},
             )
 
             self.partition_file_manager.delete_partition(partition)
@@ -712,7 +742,8 @@ class MilvusDB(BaseVectorDB):
                 return []
 
             # Create a filter expression for the query
-            filter_expression = f"partition == '{partition}'"
+            filter_expression = "partition == {partition}"
+            expr_params = {"partition": partition}
 
             excluded_keys = ["text"]
             if not include_embedding:
@@ -731,6 +762,7 @@ class MilvusDB(BaseVectorDB):
             iterator = self._client.query_iterator(
                 collection_name=self.collection_name,
                 filter=filter_expression,
+                expr_params=expr_params,
                 batch_size=16000,
                 output_fields=["*"],
             )

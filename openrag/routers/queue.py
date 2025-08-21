@@ -1,6 +1,6 @@
 from collections import Counter
 
-from config.config import load_config
+from config import load_config
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_serializer_queue, get_task_state_manager
@@ -13,6 +13,7 @@ router = APIRouter()
 
 serializer_queue = get_serializer_queue()
 task_state_manager = get_task_state_manager()
+
 
 def _format_pool_info(worker_info: dict[str, int]) -> dict[str, int]:
     """

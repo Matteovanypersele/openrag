@@ -5,13 +5,13 @@ from abc import ABC, abstractmethod
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, Optional, Union
-from langchain_core.documents.base import Document
+
+from components.utils import load_sys_template, vlmSemaphore
+from config import load_config
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
-from utils.logger import get_logger
 from PIL import Image
-from ...utils import load_config, load_sys_template, vlmSemaphore
-
+from utils.logger import get_logger
 
 logger = get_logger()
 config = load_config()
@@ -131,10 +131,10 @@ class BaseLoader(ABC):
                             logger.error(
                                 f"Invalid image data type or format: {type(image_data)}"
                             )
-                            return f"""\n<image_description>\nInvalid image data format\n</image_description>\n"""
+                            return """\n<image_description>\nInvalid image data format\n</image_description>\n"""
                     else:
                         logger.error(f"Unsupported image data type: {type(image_data)}")
-                        return f"""\n<image_description>\nUnsupported image data type\n</image_description>\n"""
+                        return """\n<image_description>\nUnsupported image data type\n</image_description>\n"""
 
                 # Create message for LLM
                 message = HumanMessage(

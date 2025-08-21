@@ -12,6 +12,7 @@ from config import load_config
 from langchain_core.documents.base import Document
 
 from .chunker import BaseChunker, ChunkerFactory
+
 # from .chunkers import BaseChunker, ChunkerFactory
 
 config = load_config()

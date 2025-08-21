@@ -2,8 +2,8 @@ import ray
 import ray.actor
 from components import BaseVectorDB
 from components.indexer.indexer import Indexer, TaskStateManager
-from components.indexer.loaders.pdf_loaders.marker import MarkerPool
 from components.indexer.loaders.pdf_loaders.docling2 import DoclingPool
+from components.indexer.loaders.pdf_loaders.marker import MarkerPool
 from components.indexer.loaders.serializer import SerializerQueue
 from components.indexer.vectordb.vectordb import ConnectorFactory
 from config import load_config

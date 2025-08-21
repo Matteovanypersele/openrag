@@ -44,4 +44,10 @@ dependencies = [
     "openai-whisper>=20250625",
     "umap-learn>=0.5.9.post2",
     "hdbscan>=0.8.40",
+    "pytest-env>=1.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
 ]

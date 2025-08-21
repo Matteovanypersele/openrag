@@ -2,7 +2,7 @@ import json
 from urllib.parse import quote
 
 from components import RagPipeline
-from config.config import load_config
+from config import load_config
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_core.documents.base import Document

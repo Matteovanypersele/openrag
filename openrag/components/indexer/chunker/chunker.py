@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
+from components.utils import llmSemaphore, load_sys_template
+from config import load_config
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -15,9 +17,7 @@ from omegaconf import OmegaConf
 from tqdm.asyncio import tqdm
 from utils.logger import get_logger
 
-
-from ...utils import llmSemaphore, load_config, load_sys_template
-from .utills import split_md_elements, combine_chunks, add_overlap
+from .utills import add_overlap, combine_chunks, split_md_elements
 
 logger = get_logger()
 config = load_config()

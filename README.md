@@ -331,6 +331,6 @@ Feel free to ask **`questions`, `suggest features`, or `report bugs` via the Git
 
 ## 📜 License
 
-OpenRag is licensed under the [Apache License 2.0](LICENSE). You are free to use, modify, and distribute this software in compliance with the terms of the license.
+OpenRag is licensed under the [AGPL-3.0](LICENSE). You are free to use, modify, and distribute this software in compliance with the terms of the license.
 
 For more details, refer to the [LICENSE](LICENSE) file in the repository.
