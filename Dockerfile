@@ -29,8 +29,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN pip3 install uv && \
     uv python install 3.12.7 && \
-    uv python pin 3.12.7 && \
-    uv sync --no-dev
+    uv python pin 3.12.7
+    # && \ uv sync --no-dev
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 # Set workdir for source code
