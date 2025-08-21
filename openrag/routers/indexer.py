@@ -187,16 +187,12 @@ async def add_file(
     metadata["file_size"] = _human_readable_size(file_stat.st_size)
     metadata["created_at"] = datetime.fromtimestamp(file_stat.st_ctime).isoformat()
     metadata["file_id"] = file_id
-    try:
-        task = indexer.add_file.remote(
-            path=file_path, metadata=metadata, partition=partition
-        )
-        await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to queue file for indexing.",
-        )
+
+    # Indexing the file
+    task = indexer.add_file.remote(
+        path=file_path, metadata=metadata, partition=partition
+    )
+    await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
 
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
@@ -210,20 +206,7 @@ async def add_file(
 
 @router.delete("/partition/{partition}/file/{file_id}")
 async def delete_file(partition: str, file_id: str):
-    try:
-        deleted = await indexer.delete_file.remote(file_id, partition)
-
-        if not deleted:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"File '{file_id}' not found in partition '{partition}'.",
-            )
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete file.",
-        )
-
+    await indexer.delete_file.remote(file_id, partition)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -243,13 +226,9 @@ async def put_file(
             detail=f"File '{file_id}' not found in partition '{partition}'.",
         )
 
-    try:
-        await indexer.delete_file.remote(file_id, partition)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete existing file.",
-        )
+    # Delete the existing file from the vector database
+    await indexer.delete_file.remote(file_id, partition)
+
     save_dir = Path(DATA_DIR)
     save_dir.mkdir(parents=True, exist_ok=True)
     file_path = save_dir / Path(file.filename).name
@@ -271,16 +250,12 @@ async def put_file(
     metadata["file_size"] = _human_readable_size(file_stat.st_size)
     metadata["created_at"] = datetime.fromtimestamp(file_stat.st_ctime).isoformat()
     metadata["file_id"] = file_id
-    try:
-        task = indexer.add_file.remote(
-            path=file_path, metadata=metadata, partition=partition
-        )
-        await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to queue file for indexing.",
-        )
+
+    # Indexing the file
+    task = indexer.add_file.remote(
+        path=file_path, metadata=metadata, partition=partition
+    )
+    await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
 
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
@@ -298,22 +273,8 @@ async def patch_file(
     file_id: str = Depends(validate_file_id),
     metadata: Optional[Any] = Depends(validate_metadata),
 ):
-    if not await vectordb.file_exists.remote(file_id, partition):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found in partition '{partition}'.",
-        )
-
     metadata["file_id"] = file_id
-
-    try:
-        await indexer.update_file_metadata.remote(file_id, metadata, partition)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update metadata : {str(e)}",
-        )
-
+    await indexer.update_file_metadata.remote(file_id, metadata, partition)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"message": f"Metadata for file '{file_id}' successfully updated."},

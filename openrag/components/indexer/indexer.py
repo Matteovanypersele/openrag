@@ -12,6 +12,7 @@ from config import load_config
 from langchain_core.documents.base import Document
 
 from .chunker import BaseChunker, ChunkerFactory
+
 # from .chunkers import BaseChunker, ChunkerFactory
 
 config = load_config()
@@ -174,22 +175,18 @@ class Indexer:
     async def delete_file(self, file_id: str, partition: str) -> bool:
         log = self.logger.bind(file_id=file_id, partition=partition)
 
-        if not self.enable_insertion:
-            log.error("Vector database is not enabled, but delete_file was called.")
-            return False
+        # if not self.enable_insertion:
+        #     log.error("Vector database is not enabled, but delete_file was called.")
+        #     return False
 
         try:
-            points = await self.vectordb.get_file_points.remote(file_id, partition)
-            if not points:
-                log.info("No points found for file_id.")
-                return False
+            await self.vectordb.delete_file.remote(file_id, partition)
+            log.info(
+                "Deleted file from partition.", file_id=file_id, partition=partition
+            )
 
-            await self.vectordb.delete_file_points.remote(points, file_id, partition)
-
-            log.info("Deleted file from partition.")
-            return True
-        except Exception:
-            log.exception("Error in delete_file")
+        except Exception as e:
+            log.exception("Error in delete_file", error=str(e))
             raise
 
     @ray.method(concurrency_group="update")
@@ -211,8 +208,8 @@ class Indexer:
             await self.vectordb.async_add_documents.remote(docs)
 
             log.info("Metadata updated for file.")
-        except Exception:
-            log.exception("Error in update_file_metadata")
+        except Exception as e:
+            log.exception("Error in update_file_metadata", error=str(e))
             raise
 
     @ray.method(concurrency_group="search")

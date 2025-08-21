@@ -11,6 +11,7 @@ router = APIRouter()
 
 indexer = get_indexer()
 
+
 @router.get("")
 async def search_multiple_partitions(
     request: Request,
@@ -21,22 +22,13 @@ async def search_multiple_partitions(
     top_k: int = Query(5, description="Number of top results to return"),
 ):
     log = logger.bind(partitions=partitions, query=text, top_k=top_k)
-    try:
-        results = await indexer.asearch.remote(
-            query=text, top_k=top_k, partition=partitions
-        )
-        log.info(
-            "Semantic search on multiple partitions completed.",
-            result_count=len(results),
-        )
-    except ValueError as e:
-        log.warning(f"Invalid input: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        log.exception("Search across multiple partitions failed.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Search failed."
-        )
+    results = await indexer.asearch.remote(
+        query=text, top_k=top_k, partition=partitions
+    )
+    log.info(
+        "Semantic search on multiple partitions completed.",
+        result_count=len(results),
+    )
 
     documents = [
         {"link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"]))}
@@ -56,22 +48,10 @@ async def search_one_partition(
     top_k: int = Query(5, description="Number of top results to return"),
 ):
     log = logger.bind(partition=partition, query=text, top_k=top_k)
-    try:
-        results = await indexer.asearch.remote(
-            query=text, top_k=top_k, partition=partition
-        )
-        log.info(
-            "Semantic search on single partition completed.", result_count=len(results)
-        )
-    except ValueError as e:
-        log.warning(f"Invalid input: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        log.exception("Search on partition failed.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Search failed."
-        )
-
+    results = await indexer.asearch.remote(query=text, top_k=top_k, partition=partition)
+    log.info(
+        "Semantic search on single partition completed.", result_count=len(results)
+    )
     documents = [
         {
             "link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"])),

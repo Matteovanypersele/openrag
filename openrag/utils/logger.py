@@ -1,7 +1,8 @@
-from loguru import logger
-import sys
 import os
+import sys
+
 from config import load_config
+from loguru import logger
 
 config = load_config()
 

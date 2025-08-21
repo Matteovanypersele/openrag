@@ -21,6 +21,7 @@ import uvicorn
 from config import load_config
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from routers.extract import router as extract_router
@@ -29,6 +30,7 @@ from routers.openai import router as openai_router
 from routers.partition import router as partition_router
 from routers.queue import router as queue_router
 from routers.search import router as search_router
+from utils.exceptions import OpenRAGError
 from utils.logger import get_logger
 
 logger = get_logger()
@@ -77,6 +79,14 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 # Apply globally only if AUTH_TOKEN is set
 dependencies = [Depends(verify_token)] if AUTH_TOKEN else []
 app = FastAPI(dependencies=dependencies)
+
+
+# Exception handlers
+@app.exception_handler(OpenRAGError)
+async def openrag_exception_handler(request: Request, exc: OpenRAGError):
+    logger.error("OpenRAGError occurred", error=str(exc))
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
+
 
 # Add CORS middleware
 if INDEXERUI_URL and INDEXERUI_COMPOSE_FILE:

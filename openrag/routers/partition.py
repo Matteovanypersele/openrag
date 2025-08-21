@@ -30,22 +30,7 @@ async def list_existant_partitions():
 
 @router.delete("/{partition}")
 async def delete_partition(partition: str):
-    try:
-        deleted = await vectordb.delete_partition.remote(partition)
-    except Exception:
-        logger.exception("Failed to delete partition", partition=partition)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete partition",
-        )
-
-    if not deleted:
-        logger.warning("Partition not found for deletion", partition=partition)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Partition not found",
-        )
-
+    await vectordb.delete_partition.remote(partition)
     logger.debug("Partition successfully deleted.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -53,30 +38,12 @@ async def delete_partition(partition: str):
 @router.get("/{partition}")
 async def list_files(request: Request, partition: str, limit: int | None = None):
     log = logger.bind(partition=partition)
-
-    if not await vectordb.partition_exists.remote(partition):
-        log.warning("Partition not found")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Partition '{partition}' not found",
-        )
-
-    try:
-        partition_dict = await vectordb.list_partition_files.remote(
-            partition=partition, limit=limit
-        )
-        log.debug(
-            "Listed files in partition", file_count=len(partition_dict.get("files", []))
-        )
-    except ValueError as e:
-        log.warning(f"Invalid partition value: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        log.exception("Failed to list files in partition")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list files: {str(e)}",
-        )
+    partition_dict = await vectordb.list_partition_files.remote(
+        partition=partition, limit=limit
+    )
+    log.debug(
+        "Listed files in partition", file_count=len(partition_dict.get("files", []))
+    )
 
     def process_file(file_dict):
         return {
@@ -98,23 +65,9 @@ async def get_file(
     partition: str,
     file_id: str,
 ):
-    if not await vectordb.file_exists.remote(file_id, partition):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found in partition '{partition}'.",
-        )
-
-    try:
-        results = await vectordb.get_file_chunks.remote(
-            partition=partition, file_id=file_id, include_id=True
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch file chunks.",
-        )
+    results = await vectordb.get_file_chunks.remote(
+        partition=partition, file_id=file_id, include_id=True
+    )
 
     documents = [
         {"link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"]))}
@@ -135,24 +88,9 @@ async def get_file(
 async def list_all_chunks(
     request: Request, partition: str, include_embedding: bool = True
 ):
-    # Check if partition exists
-    if not await vectordb.partition_exists.remote(partition):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Partition '{partition}' not found.",
-        )
-
-    try:
-        chunks = await vectordb.list_all_chunk.remote(
-            partition=partition, include_embedding=include_embedding
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
+    chunks = await vectordb.list_all_chunk.remote(
+        partition=partition, include_embedding=include_embedding
+    )
     chunks = [
         {
             "link": str(
