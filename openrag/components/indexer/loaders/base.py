@@ -5,16 +5,11 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-from components.utils import load_sys_template, vlmSemaphore
-from config import load_config
-
+from components.utils import get_vlm_semaphore, load_config, load_sys_template
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from PIL import Image
 from utils.logger import get_logger
-
-from ...utils import get_vlm_semaphore, load_config, load_sys_template
-
 
 logger = get_logger()
 config = load_config()

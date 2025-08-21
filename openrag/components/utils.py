@@ -103,13 +103,19 @@ class DistributedSemaphore:
                 ).remote(self._max_concurrent_ops)
 
     async def __aenter__(self):
+        if self._actor is None:
+            self._init_actor()
         await self._actor.acquire.remote()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        if self._actor is None:
+            self._init_actor()
         await self._actor.release.remote()
 
     def cleanup(self):
+        if self._actor is None:
+            self._init_actor()
         ray.get(self._actor.cleanup.remote())
 
 
