@@ -76,8 +76,8 @@ class Indexer:
             except TaskCancelledError:
                 self.logger.warning(f"Task {task_id} was cancelled")
                 raise
-            except Exception as e:
-                self.logger.exception(f"Task {task_id} failed with error: {e}")
+            except Exception:
+                self.logger.exception("Task {task_id} failed with error")
                 raise
         else:
             self.logger.warning(
@@ -143,7 +143,7 @@ class Indexer:
             await task_state_manager.set_state.remote(task_id, "COMPLETED")
 
         except Exception as e:
-            log.exception(f"Task {task_id} failed in add_file")
+            log.exception("Task {task_id} failed in add_file")
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             await task_state_manager.set_state.remote(task_id, "FAILED")
             await task_state_manager.set_error.remote(task_id, tb)

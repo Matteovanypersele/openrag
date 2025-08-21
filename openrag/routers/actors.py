@@ -67,9 +67,9 @@ async def restart_actor(
         ray.kill(actor, no_restart=True)
         logger.info(f"Killed actor: {actor_name}")
     except ValueError:
-        logger.warning(f"Actor {actor_name} not found. Creating new instance.")
+        logger.warning("Actor not found. Creating new instance.", actor=actor_name)
     except Exception as e:
-        logger.exception(f"Failed to kill actor {actor_name}")
+        logger.exception("Failed to kill actor", actor=actor_name)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to kill actor {actor_name}: {str(e)}",
@@ -89,7 +89,7 @@ async def restart_actor(
             },
         )
     except Exception as e:
-        logger.exception(f"Failed to restart actor {actor_name}")
+        logger.exception("Failed to restart actor", actor=actor_name)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to restart actor {actor_name}: {str(e)}",

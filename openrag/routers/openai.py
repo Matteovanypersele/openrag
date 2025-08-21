@@ -38,7 +38,7 @@ async def check_llm_model_availability(request: Request):
                     detail=f"Only these models ({available_models}) are available for your `{model_type}`. Please check your configuration file.",
                 )
         except Exception as e:
-            logger.exception(f"Failed to validate model for {model_type}.")
+            logger.exception("Failed to validate model", model=model_type)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Error while checking the `{model_type}` endpoint: {str(e)}",
