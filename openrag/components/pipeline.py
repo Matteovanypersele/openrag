@@ -201,9 +201,12 @@ class RagPipeline:
         context = format_context(docs)
 
         # 4. prepare the output
-        prompt = (
-            f"Given the context: \n{context}\n" if docs else ""
-        ) + f"Complete the following prompt: {prompt}"
+        if docs:
+            prompt = f"""Given the content
+            {context}
+            Complete the following prompt: {prompt}
+            """
+
         payload["prompt"] = prompt
 
         return payload, docs
