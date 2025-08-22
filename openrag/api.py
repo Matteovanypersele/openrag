@@ -23,6 +23,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
+from routers.actors import router as actors_router
 from routers.extract import router as extract_router
 from routers.indexer import router as indexer_router
 from routers.openai import router as openai_router
@@ -44,6 +45,7 @@ class Tags(Enum):
     EXTRACT = ("Document extracts",)
     PARTITION = ("Partitions & files",)
     QUEUE = ("Queue management",)
+    ACTORS = ("Ray Actors",)
 
 
 class AppState:
@@ -127,6 +129,8 @@ app.include_router(search_router, prefix="/search", tags=[Tags.SEARCH])
 app.include_router(partition_router, prefix="/partition", tags=[Tags.PARTITION])
 # Mount the queue router
 app.include_router(queue_router, prefix="/queue", tags=[Tags.QUEUE])
+# Mount the actors router
+app.include_router(actors_router, prefix="/actors", tags=[Tags.ACTORS])
 
 if WITH_OPENAI_API:
     # Mount the openai router

@@ -40,14 +40,8 @@ class Indexer:
         self.config = load_config()
         self.logger = get_logger()
 
-        self.serializer_queue = ray.get_actor("SerializerQueue", namespace="openrag")
-
         # Initialize chunker
         self.chunker: BaseChunker = ChunkerFactory.create_chunker(self.config)
-
-        self.vectordb = ray.get_actor("Vectordb", namespace="openrag")
-
-        self.task_state_manager = ray.get_actor("TaskStateManager", namespace="openrag")
 
         self.default_partition = "_default"
         self.enable_insertion = self.config.vectordb["enable"]
@@ -64,8 +58,9 @@ class Indexer:
         import ray
         from ray.exceptions import TaskCancelledError
 
+        serializer_queue = ray.get_actor("SerializerQueue", namespace="openrag")
         # Kick off the remote task
-        future = self.serializer_queue.submit_document.remote(
+        future = serializer_queue.submit_document.remote(
             task_id, path, metadata=metadata
         )
 
@@ -81,8 +76,8 @@ class Indexer:
             except TaskCancelledError:
                 self.logger.warning(f"Task {task_id} was cancelled")
                 raise
-            except Exception as e:
-                self.logger.exception(f"Task {task_id} failed with error: {e}")
+            except Exception:
+                self.logger.exception("Task {task_id} failed with error")
                 raise
         else:
             self.logger.warning(
@@ -106,6 +101,7 @@ class Indexer:
         metadata: Optional[Dict] = {},
         partition: Optional[str] = None,
     ):
+        task_state_manager = ray.get_actor("TaskStateManager", namespace="openrag")
         task_id = ray.get_runtime_context().get_task_id()
         file_id = metadata.get("file_id", None)
         log = self.logger.bind(file_id=file_id, partition=partition, task_id=task_id)
@@ -116,7 +112,7 @@ class Indexer:
                 k: v for k, v in metadata.items() if k not in {"file_id", "source"}
             }
 
-            await self.task_state_manager.set_details.remote(
+            await task_state_manager.set_details.remote(
                 task_id,
                 file_id=metadata.get("file_id"),
                 partition=partition,
@@ -131,11 +127,11 @@ class Indexer:
             doc = await self.serialize(task_id, path, metadata=metadata)
 
             # Chunk
-            await self.task_state_manager.set_state.remote(task_id, "CHUNKING")
+            await task_state_manager.set_state.remote(task_id, "CHUNKING")
             chunks = await self.handle.chunk.remote(doc, str(path), task_id)
 
             if self.enable_insertion and chunks:
-                await self.task_state_manager.set_state.remote(task_id, "INSERTING")
+                await task_state_manager.set_state.remote(task_id, "INSERTING")
                 await self.handle.insert_documents.remote(chunks)
                 log.info(f"Document {path} indexed successfully")
             else:
@@ -144,13 +140,13 @@ class Indexer:
                 )
 
             # Mark task as completed
-            await self.task_state_manager.set_state.remote(task_id, "COMPLETED")
+            await task_state_manager.set_state.remote(task_id, "COMPLETED")
 
         except Exception as e:
-            log.exception(f"Task {task_id} failed in add_file")
+            log.exception("Task {task_id} failed in add_file")
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            await self.task_state_manager.set_state.remote(task_id, "FAILED")
-            await self.task_state_manager.set_error.remote(task_id, tb)
+            await task_state_manager.set_state.remote(task_id, "FAILED")
+            await task_state_manager.set_error.remote(task_id, tb)
             raise
 
         finally:
@@ -169,23 +165,24 @@ class Indexer:
 
     @ray.method(concurrency_group="insert")
     async def insert_documents(self, chunks):
-        await self.vectordb.async_add_documents.remote(chunks)
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
+        await vectordb.async_add_documents.remote(chunks)
 
     @ray.method(concurrency_group="delete")
     async def delete_file(self, file_id: str, partition: str) -> bool:
         log = self.logger.bind(file_id=file_id, partition=partition)
-
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
         if not self.enable_insertion:
             log.error("Vector database is not enabled, but delete_file was called.")
             return False
 
         try:
-            points = await self.vectordb.get_file_points.remote(file_id, partition)
+            points = await vectordb.get_file_points.remote(file_id, partition)
             if not points:
                 log.info("No points found for file_id.")
                 return False
 
-            await self.vectordb.delete_file_points.remote(points, file_id, partition)
+            await vectordb.delete_file_points.remote(points, file_id, partition)
 
             log.info("Deleted file from partition.")
             return True
@@ -196,7 +193,7 @@ class Indexer:
     @ray.method(concurrency_group="update")
     async def update_file_metadata(self, file_id: str, metadata: Dict, partition: str):
         log = self.logger.bind(file_id=file_id, partition=partition)
-
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
         if not self.enable_insertion:
             log.error(
                 "Vector database is not enabled, but update_file_metadata was called."
@@ -204,12 +201,12 @@ class Indexer:
             return
 
         try:
-            docs = await self.vectordb.get_file_chunks.remote(file_id, partition)
+            docs = await vectordb.get_file_chunks.remote(file_id, partition)
             for doc in docs:
                 doc.metadata.update(metadata)
 
             await self.delete_file(file_id, partition)
-            await self.vectordb.async_add_documents.remote(docs)
+            await vectordb.async_add_documents.remote(docs)
 
             log.info("Metadata updated for file.")
         except Exception:
@@ -226,8 +223,8 @@ class Indexer:
         filter: Optional[Dict] = {},
     ) -> List[Document]:
         partition_list = self._check_partition_list(partition)
-
-        return await self.vectordb.async_search.remote(
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
+        return await vectordb.async_search.remote(
             query=query,
             partition=partition_list,
             top_k=top_k,
@@ -261,6 +258,7 @@ class TaskInfo:
     state: Optional[str] = None
     error: Optional[str] = None
     details: Dict[str, Any] = field(default_factory=dict)
+    object_ref: Optional[ray.ObjectRef] = None
 
 
 @ray.remote(concurrency_groups={"set": 1000, "get": 1000, "queue_info": 1000})
@@ -299,6 +297,12 @@ class TaskStateManager:
                 "metadata": metadata,
             }
 
+    @ray.method(concurrency_group="set")
+    async def set_object_ref(self, task_id: str, object_ref: dict):
+        async with self.lock:
+            info = await self._ensure_task(task_id)
+            info.object_ref = object_ref
+
     @ray.method(concurrency_group="get")
     async def get_state(self, task_id: str) -> Optional[str]:
         async with self.lock:
@@ -316,6 +320,12 @@ class TaskStateManager:
         async with self.lock:
             info = self.tasks.get(task_id)
             return info.details if info else None
+
+    @ray.method(concurrency_group="get")
+    async def get_object_ref(self, task_id: str) -> Optional[dict]:
+        async with self.lock:
+            info = self.tasks.get(task_id)
+            return info.object_ref if info else None
 
     @ray.method(concurrency_group="queue_info")
     async def get_all_states(self) -> Dict[str, str]:

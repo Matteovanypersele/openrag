@@ -99,17 +99,23 @@ class DistributedSemaphore:
             except ValueError:
                 # create new actor if it doesn't exist
                 self._actor = DistributedSemaphoreActor.options(
-                    name=self._name, namespace=self._namespace
+                    name=self._name, namespace=self._namespace, lifetime="detached"
                 ).remote(self._max_concurrent_ops)
 
     async def __aenter__(self):
+        if self._actor is None:
+            self._init_actor()
         await self._actor.acquire.remote()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        if self._actor is None:
+            self._init_actor()
         await self._actor.release.remote()
 
     def cleanup(self):
+        if self._actor is None:
+            self._init_actor()
         ray.get(self._actor.cleanup.remote())
 
 
@@ -137,10 +143,19 @@ def format_context(docs: list[Document]) -> str:
     return context
 
 
-# llmSemaphore = LLMSemaphore(max_concurrent_ops=config.semaphore.llm_semaphore)
-llmSemaphore = DistributedSemaphore(
-    name="llmSemaphore", max_concurrent_ops=config.semaphore.llm_semaphore
-)
-vlmSemaphore = DistributedSemaphore(
-    name="vlmSemaphore", max_concurrent_ops=config.semaphore.vlm_semaphore
-)
+def get_llm_semaphore() -> DistributedSemaphore:
+    return DistributedSemaphore(
+        name="llmSemaphore",
+        max_concurrent_ops=config.semaphore.llm_semaphore,
+    )
+
+
+def get_vlm_semaphore() -> DistributedSemaphore:
+    return DistributedSemaphore(
+        name="vlmSemaphore",
+        max_concurrent_ops=config.semaphore.vlm_semaphore,
+    )
+
+
+get_llm_semaphore()
+get_vlm_semaphore()

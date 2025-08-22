@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import re
 from abc import ABC, abstractmethod
@@ -6,8 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-from components.utils import load_sys_template, vlmSemaphore
-from config import load_config
+from components.utils import get_vlm_semaphore, load_config, load_sys_template
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from PIL import Image
@@ -73,7 +71,6 @@ class BaseLoader(ABC):
     async def get_image_description(
         self,
         image_data: Union[Image.Image, str],
-        semaphore: asyncio.Semaphore = vlmSemaphore,
     ) -> str:
         """
         Creates a description for an image using the LLM model.
@@ -88,7 +85,7 @@ class BaseLoader(ABC):
         Returns:
             str: Description of the image wrapped in XML tags
         """
-        async with semaphore:
+        async with get_vlm_semaphore():
             try:
                 # Determine the type of image data and create appropriate message content
                 if isinstance(image_data, Image.Image):
@@ -151,8 +148,8 @@ class BaseLoader(ABC):
                 response = await self.vlm_endpoint.ainvoke([message])
                 image_description = response.content
 
-            except Exception as e:
-                logger.exception(f"Error while generating image description: {str(e)}")
+            except Exception:
+                logger.exception("Error while generating image description")
                 image_description = ""
 
             return f"""<image_description>\n{image_description}\n</image_description>"""

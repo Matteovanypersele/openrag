@@ -1,9 +1,8 @@
 from collections import Counter
-
+from fastapi import APIRouter, Depends, Request, status
 from config import load_config
-from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
-from utils.dependencies import get_serializer_queue, get_task_state_manager
+from utils.dependencies import get_task_state_manager
 
 # load config
 config = load_config()
@@ -11,8 +10,6 @@ config = load_config()
 # Create an APIRouter instance
 router = APIRouter()
 
-serializer_queue = get_serializer_queue()
-task_state_manager = get_task_state_manager()
 
 
 def _format_pool_info(worker_info: dict[str, int]) -> dict[str, int]:
@@ -27,7 +24,7 @@ def _format_pool_info(worker_info: dict[str, int]) -> dict[str, int]:
 
 
 @router.get("/info")
-async def get_queue_info():
+async def get_queue_info(task_state_manager=Depends(get_task_state_manager)):
     all_states: dict = await task_state_manager.get_all_states.remote()
     status_counts = Counter(all_states.values())
 
@@ -48,7 +45,11 @@ async def get_queue_info():
 
 
 @router.get("/tasks", name="list_tasks")
-async def list_tasks(request: Request, task_status: str | None = None):
+async def list_tasks(
+    request: Request,
+    task_status: str | None = None,
+    task_state_manager=Depends(get_task_state_manager),
+):
     """
     - ?task_status=active  → QUEUED | SERIALIZING | CHUNKING | INSERTING
     - ?task_status=<exact> → exact match (case-insensitive)

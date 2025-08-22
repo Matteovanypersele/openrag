@@ -173,7 +173,9 @@ class MilvusDB(BaseVectorDB):
             self._client.load_collection(name)
 
         except MilvusException as e:
-            self.logger.exception(f"Failed to load collection `{name}`", error=str(e))
+            self.logger.exception(
+                "Failed to load collection", collection=name, error=str(e)
+            )
             raise e
 
         self.partition_file_manager = PartitionFileManager(
@@ -556,7 +558,9 @@ class MilvusDB(BaseVectorDB):
             return results
 
         except Exception:
-            log.exception(f"Couldn't fetch file points for file_id {file_id}")
+            log.exception(
+                "Couldn't fetch file points", file_id=file_id, partition=partition
+            )
             raise
 
     def get_file_chunks(
@@ -610,7 +614,9 @@ class MilvusDB(BaseVectorDB):
             return docs
 
         except Exception:
-            log.exception(f"Couldn't get file chunks for file_id {file_id}")
+            log.exception(
+                "Couldn't get file chunks", file_id=file_id, partition=partition
+            )
             raise
 
     def get_chunk_by_id(self, chunk_id: str):
@@ -691,8 +697,8 @@ class MilvusDB(BaseVectorDB):
     def list_partitions(self):
         try:
             return self.partition_file_manager.list_partitions()
-        except Exception as e:
-            self.logger.exception(f"Failed to list partitions: {e}")
+        except Exception:
+            self.logger.exception("Failed to list partitions")
             raise
 
     def collection_exists(self, collection_name: str):

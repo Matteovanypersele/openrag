@@ -6,7 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from .utils import llmSemaphore
+from .utils import get_llm_semaphore
 
 sys_prompt = """You are a seasoned expert in assessing document relevance. Your task is to evaluate documents carefully against a user's query by considering their semantics, context, and keyword significance. Your expert judgment ensures that only truly pertinent documents are flagged as relevant."""
 
@@ -38,8 +38,8 @@ class Grader:
         self.sllm = llm.with_structured_output(DocumentGrade)
         self.logger = logger
 
-    async def _grade_doc(self, user_input, doc: Document, semaphore=llmSemaphore):
-        async with semaphore:
+    async def _grade_doc(self, user_input, doc: Document):
+        async with get_llm_semaphore():
             try:
                 query_template = (
                     """User query: {user_input}\n"""

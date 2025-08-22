@@ -1,22 +1,19 @@
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
-from utils.dependencies import get_indexer, get_vectordb
+from utils.dependencies import get_vectordb
 from utils.logger import get_logger
 
 logger = get_logger()
 router = APIRouter()
-
-indexer = get_indexer()
-vectordb = get_vectordb()
 
 def _quote_param_value(s: str) -> str:
     return quote(s, safe="")
 
 
 @router.get("/")
-async def list_existant_partitions():
+async def list_existant_partitions(vectordb=Depends(get_vectordb)):
     try:
         partitions = await vectordb.list_partitions.remote()
         logger.debug(
@@ -34,7 +31,7 @@ async def list_existant_partitions():
 
 
 @router.delete("/{partition}")
-async def delete_partition(partition: str):
+async def delete_partition(partition: str, vectordb=Depends(get_vectordb)):
     try:
         deleted = await vectordb.delete_partition.remote(partition)
     except Exception:
@@ -56,7 +53,12 @@ async def delete_partition(partition: str):
 
 
 @router.get("/{partition}")
-async def list_files(request: Request, partition: str, limit: int | None = None):
+async def list_files(
+    request: Request,
+    partition: str,
+    limit: int | None = None,
+    vectordb=Depends(get_vectordb),
+):
     log = logger.bind(partition=partition)
 
     if not await vectordb.partition_exists.remote(partition):
@@ -104,6 +106,7 @@ async def get_file(
     request: Request,
     partition: str,
     file_id: str,
+    vectordb=Depends(get_vectordb),
 ):
     if not await vectordb.file_exists.remote(file_id, partition):
         raise HTTPException(
@@ -140,7 +143,10 @@ async def get_file(
 
 @router.get("/{partition}/chunks")
 async def list_all_chunks(
-    request: Request, partition: str, include_embedding: bool = True
+    request: Request,
+    partition: str,
+    include_embedding: bool = True,
+    vectordb=Depends(get_vectordb),
 ):
     # Check if partition exists
     if not await vectordb.partition_exists.remote(partition):
