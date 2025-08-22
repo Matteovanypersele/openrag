@@ -4,10 +4,10 @@ Library     Collections
 Library    RequestsLibrary
 
 *** Variables ***
-${BASE}           
-${PORT}           
-${test_file_1}    test_file_1.pdf
-${test_file_2}    test_file_2.pdf
+${BASE}           http://163.114.159.151
+${PORT}           8090
+${test_file_1}    test.pdf
+${test_file_2}    test.pdf
 ${test_part_1}    test
 ${test_part_2}    test2
 ${BASE_URL}       ${BASE}:${PORT}
@@ -74,7 +74,7 @@ Check File Exists
         Should Be Equal As Strings    ${response.json()}    File '${id}' exists in partition '${part}'.
     END
     IF    '${expected_status}' == '404'
-        Should Be Equal As Strings    ${response.json()}[detail]    File '${id}' not found in partition '${part}'.
+        Should Be Equal As Strings    ${response.json()}[detail]    [VDB_FILE_NOT_FOUND]: File ID '${id}' does not exist in partition '${part}'
     END
 
 Patch File
@@ -105,7 +105,7 @@ Get File Metadata
     ${response}=    GET    ${BASE_URL}/partition/${part}/file/${id}    expected_status=${expected_status}
     ${json_response}=    Set Variable    ${response.json()}
     IF    '${expected_status}' == '404'
-        Should Be Equal As Strings    ${json_response}[detail]    File '${id}' not found in partition '${part}'.
+        Should Be Equal As Strings    ${json_response}[detail]    [VDB_FILE_NOT_FOUND]: File ID '${id}' does not exist in partition '${part}'
     END
     IF    ${expected_metadata}    # Check if expected_metadata is not empty
         FOR    ${key}    IN    @{expected_metadata.keys()}
