@@ -26,8 +26,6 @@ x-openrag: &openrag_template
   env_file:
     - ${SHARED_ENV:-.env}
   shm_size: 10.24gb
-  depends_on:
-    - milvus
 
 x-vllm: &vllm_template
   networks:
@@ -59,6 +57,9 @@ services:
               capabilities: [ gpu ]
     profiles:
       - ''
+    depends_on:
+    - milvus
+    - vllm-gpu
 
   # No GPU
   openrag-cpu:
@@ -66,6 +67,9 @@ services:
     deploy: {}
     profiles:
       - 'cpu'
+    depends_on:
+    - milvus
+    - vllm-cpu
 
   rdb:
     image: postgres:15
