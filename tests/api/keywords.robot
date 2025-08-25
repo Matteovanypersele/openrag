@@ -4,10 +4,10 @@ Library     Collections
 Library    RequestsLibrary
 
 *** Variables ***
-${BASE}           http://163.114.159.151
-${PORT}           8090
-${test_file_1}    test.pdf
-${test_file_2}    test.pdf
+${BASE}           
+${PORT}           
+${test_file_1}    test_file_1.pdf
+${test_file_2}    test_file_2.pdf
 ${test_part_1}    test
 ${test_part_2}    test2
 ${BASE_URL}       ${BASE}:${PORT}
