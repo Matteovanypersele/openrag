@@ -41,7 +41,7 @@ Relocate the relative path to this folder
 
 
 ```bash
-cd benchmarks/automated-evaluation-pipeline
+cd ./automated-evaluation-pipeline
 ```
 
 ## Inserting files into the vectorize database

@@ -149,7 +149,7 @@ async def main():
     num_port = os.environ.get("APP_PORT")
     num_host = os.environ["APP_URL"]
     openrag_api_base_url = f"http://{num_host}:{num_port}"
-    partition = "terresunivia"
+    partition = "pdftest"   # To replace with your wanted partition's name
     url = f"{openrag_api_base_url}/partition/{partition}/chunks"
 
     start = time.time()
@@ -201,32 +201,6 @@ async def main():
 
     for label, items in clusters.items():
         logger.info(f"Cluster {label}: {[item['id'] for item in items]}")
-
-    # d = {}
-    # for i, chunk in enumerate(all_chunks_list):
-    #     content = chunk["content"]
-    #     metadata = chunk["metadata"]
-    #     metadata.pop("vector", None)  # Remove vector from metadata
-
-    #     d[i] = {"content": content, "metadata": metadata}
-
-    # # save data
-    # os.makedirs("./data", exist_ok=True)
-    # pickle.dump(
-    #     d,                                    # Chunks' content, id and source document
-    #     open("./data/chunks_data.pkl", "wb"), 
-    #     protocol=pickle.HIGHEST_PROTOCOL     
-    # )
-    # pickle.dump(
-    #     embeddings,                           # Chunks' embedding vectors
-    #     open("./data/chunks_embeddings.pkl", "wb"),
-    #     protocol=pickle.HIGHEST_PROTOCOL,
-    # )
-    # pickle.dump(
-    #     clusters,                             # Chunks' data after being clusterized
-    #     open("./data/chunks_cluster.pkl", "wb"), 
-    #     protocol=pickle.HIGHEST_PROTOCOL
-    # )
 
     questions = await generate_questions_from_clusters(
         clusters, n_min=1, n_max=3, n_questions_per_cluster=3

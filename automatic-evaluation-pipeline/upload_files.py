@@ -10,7 +10,7 @@ num_port = os.environ.get("APP_PORT")
 app_url = os.environ["APP_URL"]
 base_url = f"http://{app_url}:{num_port}"  # the base url of your running app for instance: 'http://localhost:8080'
 
-dir_name = "./pdf_files/terresunivia_pdfs"  # Replace with your directory path
+dir_name = "./pdf_files"  # Replace with your directory path
 dir_path = Path(dir_name).resolve()
 
 def __check_api(base_url):

@@ -50,16 +50,14 @@ async def retrieve_response_and_docs_openrag(
             return None, []
 
 def compute_hits(true_chunk_id, all_retrieved_chunks):
-    retrieved_ids = [c["corpus_id"] for c in all_retrieved_chunks]
-    return true_chunk_id in retrieved_ids
+    return true_chunk_id in all_retrieved_chunks
 
 
 def compute_inverted_ranks(true_chunk_id, all_retrieved_chunks):
     # see link: https://chatgpt.com/share/6813f998-2e88-8002-a472-6af2e9a64b61
-    retrieved_ids = [c["corpus_id"] for c in all_retrieved_chunks]
     key = False
     try:
-        rank = retrieved_ids.index(true_chunk_id) + 1
+        rank = all_retrieved_chunks.index(true_chunk_id) + 1
         key = True
     except ValueError:
         logger.debug(f"ValueError: {true_chunk_id} not found in retrieved_ids")
@@ -89,9 +87,9 @@ def source_score_per_question(
 
 # Response retrieval evaluation
 llm_judge_settings = {
-    "model": os.environ.get("JUDGE_MODEL"),
-    "base_url": os.environ.get("JUDGE_BASE_URL"),
-    "api_key": os.environ.get("JUDGE_API_KEY"),
+    "model": os.environ.get("MODEL"),
+    "base_url": os.environ.get("BASE_URL"),
+    "api_key": os.environ.get("API_KEY"),
     "temperature": 0.2,
     "max_tokens": 1000,
     "top_p": 1.0,
@@ -224,7 +222,7 @@ async def main():
     num_port = os.environ.get("APP_PORT")
     num_host = os.environ["APP_URL"]
     openrag_api_base_url = f"http://{num_host}:{num_port}"
-    partition = "terresunivia"
+    partition = "pdftest"   # To replace with your wanted partition's name
 
     # Create shared semaphores for rate limiting
     openrag_semaphore = asyncio.Semaphore(4)  # Limit concurrent OpenRAG requests
@@ -235,7 +233,7 @@ async def main():
         retrieve_response_and_docs_openrag(
             query=resp_ans_reference["question"],
             partition=partition,
-            openrag_base_url=openrag_api_base_url,
+            _base_url=openrag_api_base_url,
             semaphore=openrag_semaphore,
         )
         for resp_ans_reference in list_response_answer_reference
@@ -253,9 +251,8 @@ async def main():
         chunk_id_reference = [c["id"] for c in input_reference["chunks"]]  # The "true answer" ids list
 
         # Hit rate and MRR
-        if len(chunk_id_reference) == 1:
-            hit_rates.append(compute_hits(chunk_id_reference[0], openrag_chunk_ids))
-            MRRs.append(compute_inverted_ranks(chunk_id_reference[0], openrag_chunk_ids))
+        hit_rates.append(compute_hits(chunk_id_reference[0], openrag_chunk_ids))
+        MRRs.append(compute_inverted_ranks(chunk_id_reference[0], openrag_chunk_ids))
 
         # Recall computaton
         recall = len(list(set(chunk_id_reference) & set(openrag_chunk_ids))) / len(chunk_id_reference)
@@ -281,7 +278,7 @@ async def main():
     )
 
     # Score display
-    print(f"Average Hit Rate: {round(np.array(hit_rates).means(), 3)}")
+    print(f"Average Hit Rate: {round(np.array(hit_rates).mean(), 3)}")
     print(f"Average MRR: {round(np.array(MRRs).mean(), 3)}")
     print(f"Average Recall: {round(np.array(recalls).mean(), 3)}")
     
