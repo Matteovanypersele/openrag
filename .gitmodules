@@ -3,4 +3,4 @@
 	url = https://github.com/OpenLLM-France/chainlit-datalayer.git
 [submodule "extern/indexer-ui"]
 	path = extern/indexer-ui
-	url = https://github.com/ulysse-bouchet/indexer-ui
+	url = https://github.com/linagora/openrag-admin-ui.git
