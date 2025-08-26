@@ -1,7 +1,7 @@
-from langchain_core.documents.base import Document
-from langchain_openai import ChatOpenAI
 import re
 
+from langchain_core.documents.base import Document
+from langchain_openai import ChatOpenAI
 
 # Regex to match a Markdown table (header + delimiter + at least one row)
 TABLE_RE = re.compile(
@@ -33,7 +33,7 @@ def combine_chunks(
 ) -> list[str]:  # type: ignore
     doc_n_tokens = map(lambda doc: _get_token_length(documents=[doc], llm=llm), chunks)
 
-    # regroup subsequent chunks based if the total length is less than token_max
+    # regroup subsequent chunks based if the total length is less than tokenH_max
     grouped_docs = []
     current_group = []
     current_length = 0
@@ -59,6 +59,59 @@ def combine_chunks(
 
 def span_inside(span, container):
     return container[0] <= span[0] and span[1] <= container[1]
+
+
+def combine_md_elements(
+    chunks: list[tuple[str, str]],
+    llm: ChatOpenAI = None,
+    chunk_max_size: int = 512,
+) -> list[tuple[str, str]]:
+    """
+    Combine chunks from split_md_elements based on token size.
+
+    Rules:
+    - If chunk is standalone "image" or "table" and not combined, keep original type
+    - If chunk is combined with others or is "text", resulting type is "text"
+    """
+    # Calculate tokens for each chunk
+    chunk_tokens = map(
+        lambda doc: _get_token_length(documents=[doc[1]], llm=llm), chunks
+    )
+
+    # Group chunks based on token limit
+    grouped_chunks = []
+    current_group = []
+    current_length = 0
+
+    for i, ((chunk_type, content), n_tokens) in enumerate(zip(chunks, chunk_tokens)):
+        if current_length + n_tokens > chunk_max_size:
+            # Finalize current group if it exists
+            if current_group:
+                grouped_chunks.append(current_group)
+            # Start new group with current chunk
+            current_group = [(chunk_type, content)]
+            current_length = n_tokens
+        else:
+            # Add to current group
+            current_group.append((chunk_type, content))
+            current_length += n_tokens
+
+    # Add the last group if it exists
+    if current_group:
+        grouped_chunks.append(current_group)
+
+    # Create final output with proper typing
+    result = []
+    for group in grouped_chunks:
+        combined_content = "\n".join(content for _, content in group)
+        if any(t == "text" for t, _ in group):
+            # If any chunk is text, the combined type is text
+            result.append(("text", combined_content))
+        else:
+            chunk_type = group[0][0]
+            result.append((chunk_type, combined_content))
+
+    return result
 
 
 def split_md_elements(md_text: str):
@@ -103,7 +156,6 @@ def split_md_elements(md_text: str):
         remaining_text = md_text[last:]
         if remaining_text.strip():  # Only add non-empty text segments
             parts.append(("text", remaining_text.strip()))
-
     return parts
 
 

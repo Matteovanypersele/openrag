@@ -16,7 +16,7 @@ from omegaconf import OmegaConf
 from tqdm.asyncio import tqdm
 from utils.logger import get_logger
 
-from .utils import add_overlap, combine_chunks, split_md_elements
+from .utils import add_overlap, combine_chunks, combine_md_elements, split_md_elements
 
 logger = get_logger()
 config = load_config()
@@ -198,6 +198,9 @@ class RecursiveSplitter(BaseChunker):
         # Split the document into chunks of text, tables, and images
         all_content = doc.page_content.strip()
         splits = split_md_elements(all_content)
+        splits = combine_md_elements(
+            splits, llm=self.llm, chunk_max_size=self.chunk_size
+        )  # cause some md elements are too small
 
         # Add overlap to image and table chunks
         splits = add_overlap(
@@ -215,11 +218,6 @@ class RecursiveSplitter(BaseChunker):
                 chunks.extend(self.splitter.split_text(content))
             else:
                 chunks.append(content)
-
-        # regrouping chunks based on token length
-        chunks = combine_chunks(
-            chunks=chunks, llm=self.llm, chunk_max_size=self.chunk_size
-        )
 
         chunks_w_context = chunks  # Default to original chunks if no contextualization
 
@@ -289,6 +287,11 @@ class SemanticSplitter(BaseChunker):
         # split sematically meaningful chunks
         splits = self.semantic_splitter.split_text(text)
 
+        # regrouping chunks based on token length
+        splits = combine_chunks(
+            chunks=splits, llm=self.llm, chunk_max_size=self.chunk_size
+        )
+
         # apply recursive character splitter to each chunk (this would add overlapping between text chunks)
         splits_l = [self.recursive_splitter.split_text(s) for s in splits]
         splits = sum(splits_l, [])
@@ -307,6 +310,9 @@ class SemanticSplitter(BaseChunker):
         # Split the document into chunks of text, tables, and images
         all_content = doc.page_content.strip()
         splits = split_md_elements(all_content)
+        splits = combine_md_elements(
+            splits, llm=self.llm, chunk_max_size=self.chunk_size
+        )
 
         # Add overlap image and table chunks
         splits = add_overlap(
@@ -371,7 +377,7 @@ class MarkDownSplitter(BaseChunker):
         headers_to_split_on = [
             ("#", "Header 1"),
             ("##", "Header 2"),
-            # ("###", "Header 3"),
+            ("###", "Header 3"),
             # ("####", "Header 4"),
         ]
         self.md_header_splitter = MarkdownHeaderTextSplitter(
@@ -394,9 +400,9 @@ class MarkDownSplitter(BaseChunker):
             chunks=splits, llm=self.llm, chunk_max_size=self.chunk_size
         )
 
-        # use recussive splitter to further split the chunks (this would add overlapping between text chunks)
+        # use recursive splitter to further split the chunks (this would add overlapping between text chunks)
         overlapped_elements = list(
-            map(lambda x: self.recurive_splitter.split_text(x), combined_elements)
+            map(lambda x: self.recursive_splitter.split_text(x), combined_elements)
         )
         return sum(overlapped_elements, [])
 
@@ -413,6 +419,9 @@ class MarkDownSplitter(BaseChunker):
         # Split the document into chunks of text, tables, and images
         all_content = doc.page_content.strip()
         splits = split_md_elements(all_content)
+        splits = combine_md_elements(
+            splits, llm=self.llm, chunk_max_size=self.chunk_size
+        )
 
         # Add overlap image and table chunks
         splits = add_overlap(
@@ -430,11 +439,6 @@ class MarkDownSplitter(BaseChunker):
                 chunks.extend(self.split_md_chunks(content))
             else:
                 chunks.append(content)
-
-        # regrouping chunks based on token length
-        chunks = combine_chunks(
-            chunks=chunks, llm=self.llm, chunk_max_size=self.chunk_size
-        )
 
         chunks_w_context = chunks  # Default to original chunks if no contextualization
         if self.contextual_retrieval:
