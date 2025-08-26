@@ -2,7 +2,7 @@
 
 ![RAG Architecture](./RAG_architecture.png)
 
-OpenRag is a lightweight, modular and extensible Retrieval-Augmented Generation (RAG) framework designed to explore and test advanced RAG techniques — 100% open source and focused on experimentation, not lock-in.
+[OpenRag](https://open-rag.ai/) is a lightweight, modular and extensible Retrieval-Augmented Generation (RAG) framework designed to explore and test advanced RAG techniques — 100% open source and focused on experimentation, not lock-in.
 
 > Built by the Linagora, OpenRag offers a sovereign-by-design alternative to mainstream RAG stacks.
 
@@ -28,7 +28,7 @@ OpenRag is a lightweight, modular and extensible Retrieval-Augmented Generation 
 
 ## ✨ Key Features
 ### 📁 Rich File Format Support
-OpenRag supports a comprehensive range of file formats for seamless document ingestion:
+[OpenRag](https://open-rag.ai/) supports a comprehensive range of file formats for seamless document ingestion:
 
 * **Text Files**: `txt`, `md`
 * **Document Files**: `pdf`, `docx`, `doc`, `pptx` - Advanced PDF parsing with OCR support and Office document processing
@@ -69,7 +69,7 @@ Engage with your documents through our sophisticated chat interface:
 
 
 ### 🔌 OpenAI API Compatibility
-OpenRAG API is tailored to be compatible with the OpenAI format (see the [openai-compatibility section](docs/api_documentation.md#-openai-compatible-chat) for more details), enabling seamless integration of your deployed RAG into popular frontends and workflows such as OpenWebUI, LangChain, N8N, and more. This ensures flexibility and ease of adoption without requiring custom adapters.
+[OpenRag](https://open-rag.ai/) API is tailored to be compatible with the OpenAI format (see the [openai-compatibility section](docs/api_documentation.md#-openai-compatible-chat) for more details), enabling seamless integration of your deployed RAG into popular frontends and workflows such as OpenWebUI, LangChain, N8N, and more. This ensures flexibility and ease of adoption without requiring custom adapters.
 
 <details>
 
@@ -98,7 +98,7 @@ See the section on [distributed deployment in a ray cluster](#5-distributed-depl
 </details>
 
 ### 🔍 Advanced Retrieval & Reranking
-OpenRAG Leverages state-of-the-art retrieval techniques for superior accuracy.
+[OpenRag](https://open-rag.ai/) Leverages state-of-the-art retrieval techniques for superior accuracy.
 
 <details>
 s
