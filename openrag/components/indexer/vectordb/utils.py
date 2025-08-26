@@ -1,16 +1,15 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-from pydantic import BaseModel
 from sqlalchemy import (
     JSON,
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
-    Index,
     create_engine,
 )
 from sqlalchemy.orm import (
@@ -22,6 +21,7 @@ from sqlalchemy_utils import (
     create_database,
     database_exists,
 )
+from utils.exceptions.vectordb import *
 from utils.logger import get_logger
 
 logger = get_logger()
@@ -89,13 +89,20 @@ class Partition(Base):
 
 class PartitionFileManager:
     def __init__(self, database_url: str, logger=logger):
-        self.engine = create_engine(database_url)
-        if not database_exists(database_url):
-            create_database(database_url)
+        try:
+            self.engine = create_engine(database_url)
+            if not database_exists(database_url):
+                create_database(database_url)
 
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
-        self.logger = logger
+            Base.metadata.create_all(self.engine)
+            self.Session = sessionmaker(bind=self.engine)
+            self.logger = logger
+        except Exception as e:
+            raise VDBConnectionError(
+                f"Failed to connect to database: {str(e)}",
+                db_url=database_url,
+                db_type="SQLAlchemy",
+            )
 
     def list_partition_files(self, partition: str, limit: Optional[int] = None):
         """List files in a partition with optional limit - Optimized by querying File table directly"""

@@ -5,7 +5,6 @@ from typing import List, Optional
 import numpy as np
 import ray
 from langchain_core.documents.base import Document
-from openai import AsyncOpenAI, OpenAI
 from pymilvus import (
     AnnSearchRequest,
     AsyncMilvusClient,
@@ -16,8 +15,11 @@ from pymilvus import (
     MilvusException,
     RRFRanker,
 )
+from utils.exceptions.base import EmbeddingError
+from utils.exceptions.vectordb import *
 from utils.logger import get_logger
 
+from ..embeddings import OpenAIEmbedding
 from .utils import PartitionFileManager
 
 logger = get_logger()
@@ -31,6 +33,30 @@ class BaseVectorDB(ABC):
 
     @abstractmethod
     async def list_collections(self):
+        pass
+
+    @abstractmethod
+    def collection_exists(self, collection_name: str):
+        pass
+
+    @abstractmethod
+    def list_partitions(self):
+        pass
+
+    @abstractmethod
+    def partition_exists(self, partition: str) -> bool:
+        pass
+
+    @abstractmethod
+    async def delete_partition(self, partition: str):
+        pass
+
+    @abstractmethod
+    def list_partition_files(self, partition: str, limit: Optional[int] = None):
+        pass
+
+    @abstractmethod
+    async def delete_file(self, file_id: str, partition: str):
         pass
 
     @abstractmethod
@@ -55,21 +81,19 @@ class BaseVectorDB(ABC):
         pass
 
     @abstractmethod
-    def get_file_points(
-        self, file_id: dict, partition: Optional[str] = None, limit: int = 100
+    async def list_all_chunk(
+        self, partition: str, include_embedding: bool = True
+    ) -> List[Document]:
+        pass
+
+    @abstractmethod
+    async def get_file_chunks(
+        self, file_id: str, partition: str, include_id: bool = False, limit: int = 100
     ):
         pass
 
     @abstractmethod
-    def delete_file_points(self, points: list, file_id: str, partition: str):
-        pass
-
-    @abstractmethod
-    def file_exists(self, file_id: str, partition: Optional[str] = None):
-        pass
-
-    @abstractmethod
-    def collection_exists(self, collection_name: str):
+    async def get_chunk_by_id(self, chunk_id: str):
         pass
 
     # @abstractmethod
@@ -78,20 +102,6 @@ class BaseVectorDB(ABC):
     # ):
     #     pass
 
-    @abstractmethod
-    def list_all_chunk(
-        self, partition: str, include_embedding: bool = True
-    ) -> List[Document]:
-        pass
-
-    @abstractmethod
-    def list_partition_files(self, partition: str, limit: Optional[int] = None):
-        pass
-
-    @abstractmethod
-    def list_partitions(self):
-        pass
-
 
 MAX_LENGTH = 65_535
 
@@ -99,42 +109,62 @@ MAX_LENGTH = 65_535
 @ray.remote
 class MilvusDB(BaseVectorDB):
     def __init__(self):
-        from config import load_config
-        from utils.logger import get_logger
+        try:
+            from config import load_config
+            from utils.logger import get_logger
 
-        self.config = load_config()
-        self.logger = get_logger()
+            self.config = load_config()
+            self.logger = get_logger()
 
-        # init milvus clients
-        self.port = self.config.vectordb.get("port")
-        self.host = self.config.vectordb.get("host")
-        uri = f"http://{self.host}:{self.port}"
-        self.uri = uri
-        self._client = MilvusClient(uri=uri)
-        self._async_client = AsyncMilvusClient(uri=uri)
+            # init milvus clients
+            self.port = self.config.vectordb.get("port")
+            self.host = self.config.vectordb.get("host")
+            uri = f"http://{self.host}:{self.port}"
+            self.uri = uri
+            try:
+                self._client = MilvusClient(uri=uri)
+                self._async_client = AsyncMilvusClient(uri=uri)
+            except MilvusException as e:
+                raise VDBConnectionError(
+                    f"Failed to connect to Milvus: {str(e)}",
+                    db_url=uri,
+                    db_type="Milvus",
+                )
 
-        # embedder
-        self.embedding_model = self.config.embedder.get("model_name")
-        self.embedder = AsyncOpenAI(
-            base_url=self.config.embedder.get("base_url"),
-            api_key=self.config.embedder.get("api_key"),
-        )
+            # embedder
+            self.embedder: OpenAIEmbedding = OpenAIEmbedding(
+                embeddings_config=self.config.embedder
+            )
 
-        # search and index settings
-        self.hybrid_search = self.config.vectordb.get("hybrid_search", True)
-        self.schema = self._create_schema()
+            # search and index settings
+            self.hybrid_search = self.config.vectordb.get("hybrid_search", True)
+            self.schema = self._create_schema()
 
-        # partition related params
-        self.rdb_host = self.config.rdb.host
-        self.rdb_port = self.config.rdb.port
-        self.rdb_user = self.config.rdb.user
-        self.rdb_password = self.config.rdb.password
-        self.partition_file_manager: PartitionFileManager = None
+            # partition related params
+            self.rdb_host = self.config.rdb.host
+            self.rdb_port = self.config.rdb.port
+            self.rdb_user = self.config.rdb.user
+            self.rdb_password = self.config.rdb.password
+            self.partition_file_manager: PartitionFileManager = None
 
-        # Initialize collection-related attributes
-        self._collection_name = None
-        collection_name = self.config.vectordb.get("collection_name", "vdb_test")
-        self.collection_name = collection_name
+            # Initialize collection-related attributes
+            self._collection_name = None
+            collection_name = self.config.vectordb.get("collection_name", "vdb_test")
+            self.collection_name = collection_name
+        except VDBError:
+            raise
+        except EmbeddingError:
+            raise
+
+        except Exception as e:
+            self.logger.exception(
+                "Unexpected error initializing Milvus clients", error=str(e)
+            )
+            raise VDBConnectionError(
+                f"Unexpected error initializing Milvus clients: {str(e)}",
+                db_url=uri,
+                db_type="Milvus",
+            )
 
     @property
     def collection_name(self):
@@ -142,64 +172,62 @@ class MilvusDB(BaseVectorDB):
 
     @collection_name.setter
     def collection_name(self, name: str):
-        if not name:
-            raise ValueError("Collection `name` cannot be empty.")
-
         self.logger = self.logger.bind(collection=name, database="Milvus")
-
         index_params = self._create_index()
 
-        if self._client.has_collection(name):
-            self.logger.warning(f"Collection `{name}` already exists. Loading it.")
-        else:
-            self.logger.info("Creating empty collection")
-            schema = self._create_schema()
-            consistency_level = "Strong"
+        try:
+            if self._client.has_collection(name):
+                self.logger.warning(f"Collection `{name}` already exists. Loading it.")
+            else:
+                self.logger.info("Creating empty collection")
+                schema = self._create_schema()
+                consistency_level = "Strong"
+                try:
+                    self._client.create_collection(
+                        collection_name=name,
+                        schema=schema,
+                        consistency_level=consistency_level,
+                        index_params=index_params,
+                        enable_dynamic_field=True,
+                    )
+                except MilvusException as e:
+                    self.logger.exception(
+                        f"Failed to create collection `{name}`", error=str(e)
+                    )
+                    raise VDBCreateOrLoadCollectionError(
+                        f"Failed to create collection `{name}`: {str(e)}",
+                        collection_name=name,
+                        operation="create_collection",
+                    )
+
             try:
-                self._client.create_collection(
-                    collection_name=name,
-                    schema=schema,
-                    consistency_level=consistency_level,
-                    index_params=index_params,
-                    enable_dynamic_field=True,
-                )
+                self._client.load_collection(name)
             except MilvusException as e:
                 self.logger.exception(
-                    f"Failed to create collection `{name}`", error=str(e)
+                    f"Failed to load collection `{name}`", error=str(e)
                 )
-                raise e
+                raise VDBCreateOrLoadCollectionError(
+                    f"Failed to load existing collection `{name}`: {str(e)}",
+                    collection_name=name,
+                    operation="load_collection",
+                )
 
-        try:
-            self._client.load_collection(name)
-
-        except MilvusException as e:
+            self.partition_file_manager = PartitionFileManager(
+                database_url=f"postgresql://{self.rdb_user}:{self.rdb_password}@{self.rdb_host}:{self.rdb_port}/partitions_for_collection_{name}",
+                logger=self.logger,
+            )
+            self.logger.info("Milvus collection loaded.")
+            self._collection_name = name
+        except VDBError:
+            raise
+        except Exception as e:
             self.logger.exception(
-                "Failed to load collection", collection=name, error=str(e)
+                f"Unexpected error setting collection name `{name}`", error=str(e)
             )
-            raise e
-
-        self.partition_file_manager = PartitionFileManager(
-            database_url=f"postgresql://{self.rdb_user}:{self.rdb_password}@{self.rdb_host}:{self.rdb_port}/partitions_for_collection_{name}",
-            logger=self.logger,
-        )
-        self.logger.info("Milvus collection loaded.")
-        self._collection_name = name
-
-    @property
-    def embedding_dimension(self):
-        client = OpenAI(
-            base_url=self.config.embedder.get("base_url"),
-            api_key=self.config.embedder.get("api_key"),
-        )
-        embedding_vect = (
-            client.embeddings.create(
-                model=self.embedding_model,
-                input=["test"],
+            raise UnexpectedVDBError(
+                f"Unexpected error setting collection name `{name}`: {str(e)}",
+                collection_name=name,
             )
-            .data[0]
-            .embedding
-        )
-        return len(embedding_vect)
 
     def _create_schema(self):
         self.logger.info("Creating Schema")
@@ -231,7 +259,7 @@ class MilvusDB(BaseVectorDB):
         schema.add_field(
             field_name="vector",
             datatype=DataType.FLOAT_VECTOR,
-            dim=self.embedding_dimension,
+            dim=self.embedder.embedding_dimension,
         )
 
         if self.hybrid_search:
@@ -294,65 +322,6 @@ class MilvusDB(BaseVectorDB):
     async def list_collections(self) -> list[str]:
         return self._client.list_collections()
 
-    async def __embed_documents(self, chunks: list[Document]) -> list[dict]:
-        """
-        Asynchronously embed documents using the configured embedder.
-        """
-        try:
-            output = []
-            texts = [chunk.page_content for chunk in chunks]
-            embeddings = await self.embedder.embeddings.create(
-                model=self.embedding_model,
-                input=texts,
-            )
-            for i, chunk in enumerate(chunks):
-                output.append(
-                    {
-                        "text": chunk.page_content,
-                        "vector": embeddings.data[i].embedding,
-                        **chunk.metadata,
-                    }
-                )
-            return output
-        except Exception as e:
-            self.logger.exception("Error embedding documents", error=str(e))
-            raise e
-
-    @staticmethod
-    def _build_expr_template_and_params(
-        partition: list[str], filter: dict
-    ) -> tuple[str, dict]:
-        """
-        Build the expression template and its parameters to be passed to a Milvus query.
-
-        Args:
-            partition (list[str]): The partitions.
-            filter (dict): The filters to be applied to the query.
-
-        Returns:
-            (str, dict): the template expression and its parameter dict.
-        """
-        assert isinstance(partition, list), (
-            "`partition` must be a list of partition names"
-        )
-
-        expr_parts = []
-        expr_params = {}
-
-        if partition != ["all"]:
-            expr_parts.append("partition in {partition}")
-            expr_params["partition"] = partition
-
-        for key, value in filter.items():
-            # This template parameter name is valid since `key` must be
-            # a valid database field name
-            value_template_param_name = key
-            expr_parts.append(f"{key} == {{{value_template_param_name}}}")
-            expr_params[value_template_param_name] = value
-
-        expr = " and ".join(expr_parts)
-        return expr, expr_params
-
     async def async_add_documents(self, chunks: list[Document]) -> None:
         """Asynchronously add documents to the vector store."""
 
@@ -374,26 +343,42 @@ class MilvusDB(BaseVectorDB):
                 file_id=file_id, partition=partition
             )
             if res:
-                error_msg = (
-                    f"This File ({file_id}) already exists in Partition ({partition})"
-                )
+                error_msg = f"This File Id ({file_id}) already exists in Partition ({partition})"
                 self.logger.error(error_msg)
-                raise ValueError(error_msg)
+                raise VDBInsertError(
+                    error_msg,
+                    status_code=409,
+                    collection_name=self.collection_name,
+                    partition=partition,
+                    file_id=file_id,
+                )
 
-            entities = await self.__embed_documents(chunks)
+            entities = await self.embedder.embed_documents(chunks)
             await self._async_client.insert(
                 collection_name=self.collection_name,
                 data=entities,
             )
+
             # insert file_id and partition into partition_file_manager
             self.partition_file_manager.add_file_to_partition(
                 file_id=file_id, partition=partition, file_metadata=file_metadata
             )
+            self.logger.info(f"File '{file_id}' added to partition '{partition}'")
+        except EmbeddingError as e:
+            self.logger.exception("Embedding failed", error=str(e))
+            raise
+        except VDBError as e:
+            self.logger.exception("VectorDB operation failed", error=str(e))
+            raise
+
         except Exception as e:
             self.logger.exception(
-                "Error while adding documents to Milvus", error=str(e)
+                "Unexpected error while adding a document", error=str(e)
             )
-            raise
+            raise UnexpectedVDBError(
+                f"Unexpected error while adding a document: {str(e)}",
+                collection_name=self.collection_name,
+            )
 
     async def async_multi_query_search(
         self,
@@ -435,20 +420,6 @@ class MilvusDB(BaseVectorDB):
                     retrieved_chunks[document.metadata["_id"]] = document
         return list(retrieved_chunks.values())
 
-    async def __embed_query(self, query: str) -> list[float]:
-        """
-        Asynchronously embed a query using the configured embedder.
-        """
-        try:
-            embedding = await self.embedder.embeddings.create(
-                model=self.embedding_model,
-                input=[query],
-            )
-            return embedding.data[0].embedding
-        except OpenAI as e:
-            self.logger.exception("Error embedding query", error=str(e))
-            raise e
-
     async def async_search(
         self,
         query: str,
@@ -457,113 +428,135 @@ class MilvusDB(BaseVectorDB):
         partition: list[str] = None,
         filter: Optional[dict] = None,
     ) -> list[Document]:
-        expr, expr_params = self._build_expr_template_and_params(
-            partition=partition or ["all"],
-            filter=filter or {},
-        )
+        expr_parts = []
+        if partition != ["all"]:
+            expr_parts.append(f"partition in {partition}")
 
-        query_vector = await self.__embed_query(query)
-        vector_param = {
-            "data": [query_vector],
-            "anns_field": "vector",
-            "param": {
-                "metric_type": "COSINE",
-                "params": {
-                    "ef": 64,
-                    "radius": similarity_threshold,
-                    "range_filter": 1.0,
+        if filter:
+            for key, value in filter.items():
+                expr_parts.append(f"{key} == '{value}'")
+
+        # Join all parts with " and " only if there are multiple conditions
+        expr = " and ".join(expr_parts) if expr_parts else ""
+
+        try:
+            query_vector = await self.embedder.embed_query(query)
+            vector_param = {
+                "data": [query_vector],
+                "anns_field": "vector",
+                "param": {
+                    "metric_type": "COSINE",
+                    "params": {
+                        "ef": 64,
+                        "radius": similarity_threshold,
+                        "range_filter": 1.0,
+                    },
                 },
-            },
-            "limit": top_k,
-            "expr": expr,
-        }
-        if self.hybrid_search:
-            sparse_param = {
-                "data": [query],
-                "anns_field": "sparse",
-                "param": {"metric_type": "BM25", "params": {"drop_ratio_build": 0.2}},
                 "limit": top_k,
                 "expr": expr,
             }
-            reqs = [
-                AnnSearchRequest(**vector_param),
-                AnnSearchRequest(**sparse_param),
-            ]
-            response = await self._async_client.hybrid_search(
+            if self.hybrid_search:
+                sparse_param = {
+                    "data": [query],
+                    "anns_field": "sparse",
+                    "param": {
+                        "metric_type": "BM25",
+                        "params": {"drop_ratio_build": 0.2},
+                    },
+                    "limit": top_k,
+                    "expr": expr,
+                }
+                reqs = [
+                    AnnSearchRequest(**vector_param),
+                    AnnSearchRequest(**sparse_param),
+                ]
+                response = await self._async_client.hybrid_search(
+                    collection_name=self.collection_name,
+                    reqs=reqs,
+                    ranker=RRFRanker(100),
+                    output_fields=["*"],
+                    limit=top_k,
+                )
+            else:
+                response = await self._async_client.search(
+                    collection_name=self.collection_name,
+                    output_fields=["*"],
+                    limit=top_k,
+                    **vector_param,
+                )
+
+            return _parse_documents_from_search_results(response)
+        except MilvusException as e:
+            self.logger.exception("Search failed in Milvus", error=str(e))
+            raise VDBSearchError(
+                f"Search failed in Milvus: {str(e)}",
                 collection_name=self.collection_name,
-                reqs=reqs,
-                ranker=RRFRanker(100),
-                output_fields=["*"],
-                limit=top_k,
-                expr_params=expr_params,
+                partition=partition,
             )
-        else:
-            response = await self._async_client.search(
+        except EmbeddingError as e:
+            self.logger.exception(
+                "Embedding failed while processing the query", error=str(e)
+            )
+            raise
+
+        except Exception as e:
+            self.logger.exception("Unexpected error occurred", error=str(e))
+            raise UnexpectedVDBError(
+                f"Unexpected error occurred: {str(e)}",
                 collection_name=self.collection_name,
-                output_fields=["*"],
-                limit=top_k,
-                expr_params=expr_params,
-                **vector_param,
+                partition=partition,
             )
 
-        return _parse_documents_from_search_results(response)
-
-    def get_file_points(self, file_id: str, partition: str, limit: int = 100):
-        """
-        Retrieve file points from the vector database based on a filter.
-        Args:
-            filter (dict): A dictionary containing the filter key and value.
-            collection_name (Optional[str], optional): The name of the collection to query. Defaults to None.
-            limit (int, optional): The maximum number of results to return per query. Defaults to 100.
-        Returns:
-            list: A list of result IDs that match the filter criteria.
-        Raises:
-            ValueError: If the filter value type is unsupported.
-            Exception: If there is an error during the query process.
-        """
+    async def delete_file(self, file_id: str, partition: str):
         log = self.logger.bind(file_id=file_id, partition=partition)
         try:
             if not self.partition_file_manager.file_exists_in_partition(
                 file_id=file_id, partition=partition
             ):
-                return []
-
-            # Adjust filter expression based on the type of value
-            filter_expression = "partition == {partition} and file_id == {file_id}"
-            filter_params = {"partition": partition, "file_id": file_id}
-
-            # Pagination parameters
-            offset = 0
-            results = []
-
-            while True:
-                response = self._client.query(
-                    collection_name=self.collection_name,
-                    filter=filter_expression,
-                    filter_params=filter_params,
-                    output_fields=["_id"],  # Only fetch IDs
-                    limit=limit,
-                    offset=offset,
+                # raise VDB
+                log.exception(
+                    f"File ID {file_id} does not exist in partition {partition}"
                 )
-
-                if not response:
-                    break  # No more results
-
-                results.extend([res["_id"] for res in response])
-                offset += len(response)  # Move offset forward
-
-                if limit == 1:
-                    return [response[0]["_id"]] if response else []
-            log.info("Fetched file points.", count=len(results))
-            return results
-
-        except Exception:
-            log.exception(
-                "Couldn't fetch file points", file_id=file_id, partition=partition
+                raise VDBFileNotFoundError(
+                    f"File ID '{file_id}' does not exist in partition {partition}",
+                    collection_name=self.collection_name,
+                    partition=partition,
+                    file_id=file_id,
+                )
+            res = await self._async_client.delete(
+                collection_name=self.collection_name,
+                filter=f"partition == '{partition}' and file_id == '{file_id}'",
             )
-            raise
 
-    def get_file_chunks(
+            self.partition_file_manager.remove_file_from_partition(
+                file_id=file_id, partition=partition
+            )
+            log.info(
+                "Deleted file chunks from partition.", count=res.get("delete_count", 0)
+            )
+
+        except MilvusException as e:
+            log.exception(
+                f"Couldn't delete file chunks for file_id {file_id}", error=str(e)
+            )
+            raise VDBDeleteError(
+                f"Couldn't delete file chunks for file_id {file_id}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+                file_id=file_id,
+            )
+        except VDBError:
+            raise
+        except Exception as e:
+            log.exception("Unexpected error while deleting file chunks", error=str(e))
+            raise UnexpectedVDBError(
+                f"Unexpected error while deleting file chunks {file_id}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+                file_id=file_id,
+            )
+
+    async def get_file_chunks(
         self, file_id: str, partition: str, include_id: bool = False, limit: int = 100
     ):
         log = self.logger.bind(file_id=file_id, partition=partition)
@@ -571,7 +564,15 @@ class MilvusDB(BaseVectorDB):
             if not self.partition_file_manager.file_exists_in_partition(
                 file_id=file_id, partition=partition
             ):
-                return []
+                log.exception(
+                    f"File ID '{file_id}' does not exist in partition '{partition}'"
+                )
+                raise VDBFileNotFoundError(
+                    f"File ID '{file_id}' does not exist in partition '{partition}'",
+                    collection_name=self.collection_name,
+                    partition=partition,
+                    file_id=file_id,
+                )
 
             # Adjust filter expression based on the type of value
             filter_expression = "partition == {partition} and file_id == {file_id}"
@@ -585,7 +586,7 @@ class MilvusDB(BaseVectorDB):
             )
 
             while True:
-                response = self._client.query(
+                response = await self._async_client.query(
                     collection_name=self.collection_name,
                     filter=filter_expression,
                     filter_params=filter_params,
@@ -613,13 +614,29 @@ class MilvusDB(BaseVectorDB):
             log.info("Fetched file chunks.", count=len(results))
             return docs
 
-        except Exception:
+        except MilvusException as e:
             log.exception(
-                "Couldn't get file chunks", file_id=file_id, partition=partition
+                f"Couldn't get file chunks for file_id {file_id}", error=str(e)
             )
+            raise VDBSearchError(
+                f"Couldn't get file chunks for file_id {file_id}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+                file_id=file_id,
+            )
+        except VDBError:
             raise
 
-    def get_chunk_by_id(self, chunk_id: str):
+        except Exception as e:
+            log.exception("Unexpected error while getting file chunks", error=str(e))
+            raise VDBSearchError(
+                f"Unexpected error while getting file chunks {file_id}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+                file_id=file_id,
+            )
+
+    async def get_chunk_by_id(self, chunk_id: str):
         """
         Retrieve a chunk by its ID.
         Args:
@@ -629,7 +646,7 @@ class MilvusDB(BaseVectorDB):
         """
         log = self.logger.bind(chunk_id=chunk_id)
         try:
-            response = self._client.query(
+            response = await self._async_client.query(
                 collection_name=self.collection_name,
                 filter=f"_id == {chunk_id}",
                 limit=1,
@@ -644,30 +661,19 @@ class MilvusDB(BaseVectorDB):
                     },
                 )
             return None
-        except Exception as e:
-            log.exception("Couldn't get chunk by ID")
-            raise e
-
-    def delete_file_points(self, points: list, file_id: str, partition: str):
-        """
-        Delete points from Milvus
-        """
-        log = self.logger.bind(file_id=file_id, partition=partition)
-        try:
-            if not self.partition_file_manager.file_exists_in_partition(
-                file_id=file_id, partition=partition
-            ):
-                raise ValueError(
-                    f"This File ({file_id}) doesn't exist in Partition ({partition})"
-                )
-
-            self._client.delete(collection_name=self.collection_name, ids=points)
-            self.partition_file_manager.remove_file_from_partition(
-                file_id=file_id, partition=partition
+        except MilvusException as e:
+            log.exception("Milvus query failed", error=str(e))
+            raise VDBSearchError(
+                f"Milvus query failed: {str(e)}",
+                collection_name=self.collection_name,
             )
-            log.info("File points deleted.")
-        except Exception:
-            log.exception("Error while deleting file points.")
+
+        except Exception as e:
+            log.exception("Unexpected error while retrieving chunk", error=str(e))
+            raise UnexpectedVDBError(
+                f"Unexpected error while retrieving chunk {chunk_id}: {str(e)}",
+                collection_name=self.collection_name,
+            )
 
     def file_exists(self, file_id: str, partition: str):
         """
@@ -677,9 +683,12 @@ class MilvusDB(BaseVectorDB):
             return self.partition_file_manager.file_exists_in_partition(
                 file_id=file_id, partition=partition
             )
-        except Exception:
+        except Exception as e:
             self.logger.exception(
-                "File existence check failed.", file_id=file_id, partition=partition
+                "File existence check failed.",
+                file_id=file_id,
+                partition=partition,
+                error=str(e),
             )
             return False
 
@@ -688,17 +697,46 @@ class MilvusDB(BaseVectorDB):
             partition_dict = self.partition_file_manager.list_partition_files(
                 partition=partition, limit=limit
             )
+            if not partition_dict:
+                self.logger.warning(
+                    f"Partition does exist or No files found in partition {partition}"
+                )
+                raise VDBPartitionNotFound(
+                    f"Partition `{partition}` does not exist or no files found.",
+                    collection_name=self.collection_name,
+                    partition=partition,
+                )
+
             return partition_dict
 
-        except Exception:
-            self.logger.exception("Failed get this partition.", partition=partition)
+        except MilvusException as e:
+            self.logger.exception(
+                f"Failed to list files in partition {partition}", error=str(e)
+            )
+            raise VDBPartitionNotFound(
+                f"Failed to list files in partition `{partition}`: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
+        except VDBError:
             raise
+
+        except Exception as e:
+            self.logger.exception(
+                f"Unexpected error while listing files in partition {partition}",
+                error=str(e),
+            )
+            raise UnexpectedVDBError(
+                f"Unexpected error while listing files in partition {partition}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
 
     def list_partitions(self):
         try:
             return self.partition_file_manager.list_partitions()
-        except Exception:
-            self.logger.exception("Failed to list partitions")
+        except Exception as e:
+            self.logger.exception("Failed to list partitions", error=str(e))
             raise
 
     def collection_exists(self, collection_name: str):
@@ -707,7 +745,7 @@ class MilvusDB(BaseVectorDB):
         """
         return self._client.has_collection(collection_name=collection_name)
 
-    def delete_partition(self, partition: str):
+    async def delete_partition(self, partition: str):
         log = self.logger.bind(partition=partition)
         if not self.partition_file_manager.partition_exists(partition):
             log.debug(f"Partition {partition} does not exist")
@@ -716,17 +754,29 @@ class MilvusDB(BaseVectorDB):
         try:
             count = self._client.delete(
                 collection_name=self.collection_name,
-                filter="partition == {partition}",
-                filter_params={"partition": partition},
+                filter=f"partition == '{partition}'",
             )
 
             self.partition_file_manager.delete_partition(partition)
             log.info("Deleted points from partition", count=count.get("delete_count"))
 
-            return True
-        except Exception as e:
+        except MilvusException as e:
             log.exception("Failed to delete partition", error=str(e))
-            return False
+            raise VDBDeleteError(
+                f"Failed to delete partition `{partition}`: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
+        except VDBError as e:
+            log.exception("VectorDB operation failed", error=str(e))
+            raise e
+        except Exception as e:
+            log.exception("Unexpected error while deleting partition", error=str(e))
+            raise UnexpectedVDBError(
+                f"Unexpected error while deleting partition {partition}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
 
     def partition_exists(self, partition: str):
         """
@@ -739,13 +789,21 @@ class MilvusDB(BaseVectorDB):
             log.exception("Partition existence check failed.", error=str(e))
             return False
 
-    def list_all_chunk(self, partition: str, include_embedding: bool = True):
+    async def list_all_chunk(self, partition: str, include_embedding: bool = True):
         """
         List all chunk from a given partition.
         """
         try:
             if not self.partition_file_manager.partition_exists(partition):
-                return []
+                self.logger.warning(
+                    f"Partition '{partition}' does not exist or no files found."
+                )
+                # Raise an exception if the partition does not exist
+                raise VDBPartitionNotFound(
+                    f"Partition '{partition}' not found.",
+                    collection_name=self.collection_name,
+                    partition=partition,
+                )
 
             # Create a filter expression for the query
             filter_expression = "partition == {partition}"
@@ -790,11 +848,26 @@ class MilvusDB(BaseVectorDB):
 
             return chunks
 
+        except MilvusException as e:
+            self.logger.exception("Milvus query failed", error=str(e))
+            raise VDBSearchError(
+                f"Milvus query failed: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
+        except VDBError:
+            raise
+
         except Exception as e:
             self.logger.exception(
-                f"Error in `list_chunk_ids` for partition {partition}: {e}"
+                f"Unexpected error while listing all chunks in partition {partition}",
+                error=str(e),
             )
-            raise
+            raise UnexpectedVDBError(
+                f"Unexpected error while listing all chunks in partition {partition}: {str(e)}",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
 
 
 def _parse_documents_from_search_results(search_results):

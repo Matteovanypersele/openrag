@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_indexer
 from utils.logger import get_logger
@@ -21,22 +21,13 @@ async def search_multiple_partitions(
     indexer=Depends(get_indexer),
 ):
     log = logger.bind(partitions=partitions, query=text, top_k=top_k)
-    try:
-        results = await indexer.asearch.remote(
-            query=text, top_k=top_k, partition=partitions
-        )
-        log.info(
-            "Semantic search on multiple partitions completed.",
-            result_count=len(results),
-        )
-    except ValueError as e:
-        log.warning(f"Invalid input: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        log.exception("Search across multiple partitions failed.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Search failed."
-        )
+    results = await indexer.asearch.remote(
+        query=text, top_k=top_k, partition=partitions
+    )
+    log.info(
+        "Semantic search on multiple partitions completed.",
+        result_count=len(results),
+    )
 
     documents = [
         {"link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"]))}
@@ -57,22 +48,10 @@ async def search_one_partition(
     indexer=Depends(get_indexer),
 ):
     log = logger.bind(partition=partition, query=text, top_k=top_k)
-    try:
-        results = await indexer.asearch.remote(
-            query=text, top_k=top_k, partition=partition
-        )
-        log.info(
-            "Semantic search on single partition completed.", result_count=len(results)
-        )
-    except ValueError as e:
-        log.warning(f"Invalid input: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        log.exception("Search on partition failed.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Search failed."
-        )
-
+    results = await indexer.asearch.remote(query=text, top_k=top_k, partition=partition)
+    log.info(
+        "Semantic search on single partition completed.", result_count=len(results)
+    )
     documents = [
         {
             "link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"])),
@@ -97,21 +76,10 @@ async def search_file(
     indexer=Depends(get_indexer),
 ):
     log = logger.bind(partition=partition, file_id=file_id, query=text, top_k=top_k)
-    try:
-        results = await indexer.asearch.remote(
-            query=text, top_k=top_k, partition=partition, filter={"file_id": file_id}
-        )
-        log.info(
-            "Semantic search on specific file completed.", result_count=len(results)
-        )
-    except ValueError as e:
-        log.warning(f"Invalid input: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        log.exception("Search on file failed.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Search failed."
-        )
+    results = await indexer.asearch.remote(
+        query=text, top_k=top_k, partition=partition, filter={"file_id": file_id}
+    )
+    log.info("Semantic search on specific file completed.", result_count=len(results))
 
     documents = [
         {"link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"]))}
