@@ -42,6 +42,7 @@ x-vllm: &vllm_template
     --model ${EMBEDDER_MODEL_NAME:-jinaai/jina-embeddings-v3}
     --trust-remote-code
     --gpu_memory_utilization 0.3
+    --task embed
   ports:
     - ${VLLM_PORT:-8000}:8000
 services:
