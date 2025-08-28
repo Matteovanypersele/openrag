@@ -148,8 +148,10 @@ class BaseLoader(ABC):
                 response = await self.vlm_endpoint.ainvoke([message])
                 image_description = response.content
 
-            except Exception:
-                logger.exception("Error while generating image description")
+            except Exception as e:
+                logger.exception(
+                    "Error while generating image description", error=str(e)
+                )
                 image_description = ""
 
             return f"""<image_description>\n{image_description}\n</image_description>"""
