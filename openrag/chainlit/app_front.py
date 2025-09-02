@@ -1,12 +1,14 @@
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 import chainlit as cl
 import httpx
+from chainlit.context import get_context
+from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from utils.logger import get_logger
-from dotenv import load_dotenv
 
 load_dotenv()
 logger = get_logger()
@@ -49,27 +51,22 @@ if CHAINLIT_AUTH_SECRET:
             return None
 
 
-def get_base_url():
-    """
-    Get the base URL for API calls from Chainlit.
-    
-    Since Chainlit is mounted on the same FastAPI application, we should use
-    internal networking (localhost with the internal port) rather than relying
-    on the browser's referer URL which may contain external ports or hostnames
-    that are not accessible from within the container.
-    """
-    # Use the internal port that the FastAPI application listens on
-    port = os.environ.get("APP_iPORT", "8080")
-    base_url = f"http://localhost:{port}"
-    logger.debug("Using internal base URL for API calls", base_url=base_url)
-    return base_url
+port = os.environ.get("APP_iPORT", "8080")
+INTERNAL_BASE_URL = f"http://localhost:{port}"  # Default fallback URL
+
+
+def get_external_url():
+    context = get_context()
+    referer = context.session.environ.get("HTTP_REFERER", "")
+    parsed_url = urlparse(referer)  # Parse the referer URL
+    external_base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    return external_base_url
 
 
 @cl.set_chat_profiles
 async def chat_profile():
-    base_url = get_base_url()
     client = AsyncOpenAI(
-        base_url=f"{base_url}/v1",
+        base_url=f"{INTERNAL_BASE_URL}/v1",
         api_key=AUTH_TOKEN if AUTH_TOKEN else "sk-1234",
     )
     try:
@@ -89,7 +86,7 @@ async def chat_profile():
                     markdown_description=description_template.format(
                         name=m.id, partition=partition
                     ),
-                    icon=f"https://picsum.photos/{250 + i}",
+                    icon="https://open-rag.ai/images/Ondine.svg",
                 )
             )
         return chat_profiles
@@ -99,19 +96,21 @@ async def chat_profile():
 
 @cl.on_chat_start
 async def on_chat_start():
-    base_url = get_base_url()
     cl.user_session.set("messages", [])
-    logger.debug("New Chat Started", base_url=base_url)
+    logger.debug("New Chat Started", internal_base_url=INTERNAL_BASE_URL)
     try:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(timeout=httpx.Timeout(4 * 60.0)), headers=headers
         ) as client:
-            response = await client.get(url=f"{base_url}/health_check", headers=headers)
+            response = await client.get(
+                url=f"{INTERNAL_BASE_URL}/health_check", headers=headers
+            )
             print(response.text)
-    except Exception:
-        logger.exception("An error occured while checking the API health")
-        logger.warning("Make sur the fastapi is up!!")
-    cl.user_session.set("BASE URL", base_url)
+    except Exception as e:
+        logger.exception("An error occured while checking the API health", error=str(e))
+        await cl.Message(
+            content=f"An error occured while checking the API health: {str(e)}"
+        ).send()
 
 
 async def __fetch_page_content(chunk_url):
@@ -123,6 +122,9 @@ async def __fetch_page_content(chunk_url):
 
 
 async def __format_sources(metadata_sources, only_txt=False):
+    external_url = (
+        get_external_url()
+    )  # used to override the base URL when the front-end requests a file resource
     if not metadata_sources:
         return None, None
 
@@ -130,6 +132,9 @@ async def __format_sources(metadata_sources, only_txt=False):
     for i, s in enumerate(metadata_sources):
         filename = Path(s["filename"])
         file_url = s["file_url"]
+        file_url = file_url.replace(
+            INTERNAL_BASE_URL, external_url
+        )  # put the correct base url
         page = s["page"]
         source_name = f"{filename}" + (
             f" (page: {page})"
@@ -173,10 +178,8 @@ async def __format_sources(metadata_sources, only_txt=False):
 async def on_message(message: cl.Message):
     messages: list = cl.user_session.get("messages", [])
     model: str = cl.user_session.get("chat_profile")
-
-    base_url = get_base_url()
     client = AsyncOpenAI(
-        base_url=f"{base_url}/v1",
+        base_url=f"{INTERNAL_BASE_URL}/v1",
         api_key=AUTH_TOKEN if AUTH_TOKEN else "sk-1234",
     )
 
