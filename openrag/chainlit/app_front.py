@@ -1,11 +1,9 @@
 import json
 import os
 from pathlib import Path
-from urllib.parse import urlparse
 
 import chainlit as cl
 import httpx
-from chainlit.context import get_context
 from openai import AsyncOpenAI
 from utils.logger import get_logger
 from dotenv import load_dotenv
@@ -52,15 +50,18 @@ if CHAINLIT_AUTH_SECRET:
 
 
 def get_base_url():
-    try:
-        context = get_context()
-        referer = context.session.environ.get("HTTP_REFERER", "")
-        parsed_url = urlparse(referer)  # Parse the referer URL
-        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-    except Exception as e:
-        logger.exception("Error retrieving Chainlit context", error=str(e))
-        port = os.environ.get("APP_iPORT", "8080")
-        base_url = f"http://localhost:{port}"  # Default fallback URL
+    """
+    Get the base URL for API calls from Chainlit.
+    
+    Since Chainlit is mounted on the same FastAPI application, we should use
+    internal networking (localhost with the internal port) rather than relying
+    on the browser's referer URL which may contain external ports or hostnames
+    that are not accessible from within the container.
+    """
+    # Use the internal port that the FastAPI application listens on
+    port = os.environ.get("APP_iPORT", "8080")
+    base_url = f"http://localhost:{port}"
+    logger.debug("Using internal base URL for API calls", base_url=base_url)
     return base_url
 
 
