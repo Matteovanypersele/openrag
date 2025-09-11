@@ -53,7 +53,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --upgrade pip && \
     uv pip install -r requirements/cpu.txt
 
-ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:/opt/venv/lib/libiomp5.so:$LD_PRELOAD"
+RUN export TCMALLOC_SO_PATH=$(ldconfig -p | awk 'BEGIN {FS="=>"} /libtcmalloc_minimal.so/ { sub(/^[ \t]+/, "", $2); print $2 }')
+ENV LD_PRELOAD="$TCMALLOC_SO_PATH:/opt/venv/lib/libiomp5.so:$LD_PRELOAD"
 
 RUN echo 'ulimit -c 0' >> ~/.bashrc
 
