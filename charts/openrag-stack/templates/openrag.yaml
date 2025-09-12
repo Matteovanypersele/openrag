@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openrag-stack.fullname" . }}
+  labels:
+    app: openrag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openrag
+  template:
+    metadata:
+      labels:
+        app: openrag
+    spec:
+      initContainers:
+        - name: init-venv
+          image: ghcr.io/linagora/openrag:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Python env in /app/.venv..."
+              while [ ! -x /app/.venv/bin/python ]; do
+                sleep 3
+              done
+              echo "Venv is ready."
+          volumeMounts:
+            - name: venv
+              mountPath: /app/.venv
+      containers:
+        - name: openrag
+          image: "{{ .Values.openrag.image.repository }}:{{ .Values.openrag.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.openrag.service.port }}
+          resources:
+            {{- toYaml .Values.openrag.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: rag-env
+            - secretRef:
+                name: rag-env-secrets
+          volumeMounts:
+            - name: model-weights
+              mountPath: /app/model_weights
+            - name: data
+              mountPath: /app/data
+            - name: logs
+              mountPath: /app/logs
+            - name: venv
+              mountPath: /app/venv
+      volumes:
+        - name: model-weights
+          persistentVolumeClaim:
+            claimName: rag-model-weights
+        - name: data
+          persistentVolumeClaim:
+            claimName: rag-data
+        - name: logs
+          persistentVolumeClaim:
+            claimName: rag-logs
+        - name: venv
+          persistentVolumeClaim:
+            claimName: rag-venv
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openrag-stack.fullname" . }}
+spec:
+  selector:
+    app: openrag
+  ports:
+    - protocol: TCP
+      port: {{ .Values.openrag.service.port }}
+      targetPort: {{ .Values.openrag.service.port }}
+  type: {{ .Values.openrag.service.type }}

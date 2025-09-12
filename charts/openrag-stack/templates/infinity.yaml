@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reranker
+  labels:
+    app: reranker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reranker
+  template:
+    metadata:
+      labels:
+        app: reranker
+    spec:
+      runtimeClassName: nvidia
+      containers:
+        - name: reranker
+          image: michaelf34/infinity:latest
+          args:
+            - "v2"
+            - "--model-id"
+            - "{{ .Values.env.config.RERANKER_MODEL | default "Alibaba-NLP/gte-multilingual-reranker-base" }}"
+            - "--port"
+            - "{{ .Values.env.config.RERANKER_PORT | default "7997" }}"
+          ports:
+            - containerPort: 7997
+          resources:
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+            requests:
+              cpu: "4"
+              memory: "16Gi"
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /app/.cache/huggingface
+          envFrom:
+            - configMapRef:
+                name: rag-env
+      volumes:
+        - name: hf-cache
+          persistentVolumeClaim:
+            claimName: rag-model-weights
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reranker
+spec:
+  selector:
+    app: reranker
+  ports:
+    - protocol: TCP
+      port: 7997
+      targetPort: 7997
+  type: ClusterIP
