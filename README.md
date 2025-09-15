@@ -129,7 +129,7 @@ For more details, [see this file](docs/features_in_details.md)
 ### Installation and Configuration
 #### 1. Clone the repository:
 ```bash
-# git clone --recurse-submodules https://github.com/linagora/openrag.git
+git clone --recurse-submodules git@github.com:linagora/openrag.git
 
 cd openrag
 git checkout main # or a given release

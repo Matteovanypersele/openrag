@@ -2,7 +2,7 @@ include:
   - vdb/milvus.yaml
   - ${CHAINLIT_DATALAYER_COMPOSE:-extern/dummy.yaml}
   - extern/infinity.yaml
-  - ${INDEXERUI_COMPOSE_FILE:-extern/dummy.yaml}
+  - ${INDEXERUI_COMPOSE_FILE:-extern/indexer-ui/docker-compose.yaml}
 
 x-openrag: &openrag_template
   image: ghcr.io/linagora/openrag:dev-latest
@@ -41,10 +41,13 @@ x-vllm: &vllm_template
   command: >
     --model ${EMBEDDER_MODEL_NAME:-jinaai/jina-embeddings-v3}
     --trust-remote-code
-    --gpu_memory_utilization 0.3
     --task embed
-  ports:
-    - ${VLLM_PORT:-8000}:8000
+    --gpu_memory_utilization 0.3
+    --max-num-seqs 1
+  # --max-model-len ${MOX_MODEL_LEN:-2048}
+  # gpu_memory_utilization, max-num-seqs et max-model-len can be tuned depending on your GPU memory
+  # ports:
+  #   - ${VLLM_PORT:-8000}:8000
 services:
   # GPU - default 
   openrag:
@@ -117,4 +120,3 @@ services:
 
     profiles:
       - 'cpu'
-

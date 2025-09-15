@@ -86,7 +86,7 @@ async def chat_profile():
                     markdown_description=description_template.format(
                         name=m.id, partition=partition
                     ),
-                    icon="https://open-rag.ai/images/Ondine.svg",
+                    icon="public/favicon.svg",
                 )
             )
         return chat_profiles
@@ -226,9 +226,3 @@ async def on_message(message: cl.Message):
         except Exception as e:
             logger.exception("Error during chat completion", error=str(e))
             await cl.Message(content=f"An error occurred: {str(e)}").send()
-
-
-if __name__ == "__main__":
-    from chainlit.cli import run_chainlit
-
-    run_chainlit(__file__)

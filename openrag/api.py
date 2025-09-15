@@ -150,7 +150,7 @@ if WITH_CHAINLIT_UI:
     # Mount the default front
     from chainlit.utils import mount_chainlit
 
-    mount_chainlit(app, "./chainlit/app_front.py", path="/chainlit")
+    mount_chainlit(app, "./app_front.py", path="/chainlit")
     app.include_router(
         openai_router, prefix="/v1", tags=[Tags.OPENAI]
     )  # cause chainlit uses openai api endpoints
