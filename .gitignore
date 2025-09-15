@@ -39,6 +39,8 @@ data/
 data/*
 !data/.gitkeep
 
+ray_mount
+
 **/*.env.compose
 kotaemon
 ./temps_img
