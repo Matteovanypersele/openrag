@@ -129,39 +129,12 @@ For more details, [see this file](docs/features_in_details.md)
 ### Installation and Configuration
 #### 1. Clone the repository:
 ```bash
-git clone git@github.com:linagora/openrag.git
-
-# # to clone the repo with the associated submodules
-# git clone --recurse-submodules git@github.com:linagora/openrag.git
+git clone --recurse-submodules git@github.com:linagora/openrag.git
 
 cd openrag
 git checkout main # or a given release
 ```
-
-#### 2. Create uv environment and install dependencies:
->[!IMPORTANT] 
-> Ensure you have Python 3.12 installed along with `uv`. For detailed installation instructions for uv, refer to the [uv official documentation](https://docs.astral.sh/uv/getting-started/installation/#pypi). You can either use `uv` or `pip` (if already available) or `curl`. Additional installation methods are outlined in the [documentation](https://docs.astral.sh/uv/getting-started/installation/#pypi).
-
-```bash
-# with pip
-pip install uv
-
-# with curl
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-To use the PostgreSQL database server, we must install the Psycopg2 package, which requires libpq-dev to provide the necessary components for building Psycopg2.
-```bash
-sudo apt-get install libpq-dev python3-dev
-```
-
-```bash
-# Create a new environment with all dependencies
-cd openrag/
-uv sync
-```
-
-#### 3. Create a `.env` File
+#### 2. Create a `.env` File
 Create a `.env` file at the root of the project, mirroring the structure of `.env.example`, to configure your environment.
 
 ##### File Parser configuration 
