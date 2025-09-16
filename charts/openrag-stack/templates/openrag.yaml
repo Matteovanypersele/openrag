@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: openrag
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.openrag.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: openrag
@@ -19,13 +19,13 @@ spec:
     spec:
       initContainers:
         - name: init-venv
-          image: ghcr.io/linagora/openrag:latest
+          image: "{{ .Values.openrag.image.repository }}:{{ .Values.openrag.image.tag }}"
           command:
             - sh
             - -c
             - |
               echo "Waiting for Python env in /app/.venv..."
-              while [ ! -x /app/.venv/bin/python ]; do
+              while [ ! -f /app/.venv/.ready ]; do
                 sleep 3
               done
               echo "Venv is ready."
@@ -52,7 +52,7 @@ spec:
             - name: logs
               mountPath: /app/logs
             - name: venv
-              mountPath: /app/venv
+              mountPath: /app/.venv
       volumes:
         - name: model-weights
           persistentVolumeClaim:

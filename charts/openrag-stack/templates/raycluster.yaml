@@ -14,22 +14,26 @@ spec:
       spec:
         initContainers:
           - name: init-venv-sync
-            image: ghcr.io/linagora/openrag:dev-latest
+            image: {{ .Values.ray.image.repository }}:{{ .Values.ray.image.tag }}
             command:
               - sh
               - -c
               - |
-                echo "Cleaning /app/.venv..."
-                rm -rf /app/.venv/*
-                echo "Running uv sync on shared venv..."
-                uv sync
+                if [ -f /app/.venv/.ready ]; then
+                  echo "Existing env detected, skipping install."
+                else
+                  echo "No env ready, cleaning and syncing..."
+                  rm -rf /app/.venv/*
+                  uv sync
+                  touch /app/.venv/.ready
+                fi
             volumeMounts:
               - name: venv
                 mountPath: /app/.venv
 
         containers:
           - name: ray-head
-            image: ghcr.io/linagora/openrag-ray
+            image: {{ .Values.ray.image.repository }}:{{ .Values.ray.image.tag }}
             command: ["uv"]
             args:
               - "run"
@@ -83,10 +87,11 @@ spec:
               claimName: rag-venv
 
   workerGroupSpecs:
-    - groupName: worker-group-1
-      replicas: 1
-      minReplicas: 1
-      maxReplicas: 1
+  {{- range $i, $e := until (.Values.ray.workers.count | int) }}
+    - groupName: worker-group-{{ add $i 1 }}
+      replicas: {{ $.Values.ray.workers.replicas }}
+      minReplicas: {{ $.Values.ray.workers.minReplicas }}
+      maxReplicas: {{ $.Values.ray.workers.maxReplicas }}
       template:
         spec:
           initContainers:
@@ -97,7 +102,7 @@ spec:
                 - -c
                 - |
                   echo "Waiting for Python env in /app/.venv..."
-                  while [ ! -x /app/.venv/bin/python ]; do
+                  while [ ! -f /app/.venv/.ready ]; do
                     sleep 3
                   done
                   echo "Venv is ready."
@@ -106,7 +111,7 @@ spec:
                   mountPath: /app/.venv
           containers:
             - name: ray-worker
-              image: ghcr.io/linagora/openrag-ray
+              image: {{ $.Values.ray.image.repository }}:{{ $.Values.ray.image.tag }}
               command: ["/bin/bash", "-lc", "--"]
               args:
                 - uv run $KUBERAY_GEN_RAY_START_CMD
@@ -140,61 +145,4 @@ spec:
             - name: venv
               persistentVolumeClaim:
                 claimName: rag-venv
-
-    - groupName: worker-group-2
-      replicas: 1
-      minReplicas: 1
-      maxReplicas: 1
-      template:
-        spec:
-          initContainers:
-            - name: init-venv
-              image: ghcr.io/linagora/openrag:dev-latest
-              command:
-                - sh
-                - -c
-                - |
-                  echo "Waiting for Python env in /app/.venv..."
-                  while [ ! -x /app/.venv/bin/python ]; do
-                    sleep 3
-                  done
-                  echo "Venv is ready."
-              volumeMounts:
-                - name: venv
-                  mountPath: /app/.venv
-          containers:
-            - name: ray-worker
-              image: ghcr.io/linagora/openrag-ray
-              command: ["/bin/bash", "-lc", "--"]
-              args:
-                - uv run $KUBERAY_GEN_RAY_START_CMD
-              volumeMounts:
-                - name: model-weights
-                  mountPath: /app/model_weights
-                - name: data
-                  mountPath: /app/data
-                - name: logs
-                  mountPath: /app/logs
-                - name: venv
-                  mountPath: /app/.venv
-              envFrom:
-                - configMapRef:
-                    name: rag-env
-                - secretRef:
-                    name: rag-env-secrets
-              resources:
-                limits:
-                  nvidia.com/gpu: 1
-          volumes:
-            - name: model-weights
-              persistentVolumeClaim:
-                claimName: rag-model-weights
-            - name: data
-              persistentVolumeClaim:
-                claimName: rag-data
-            - name: logs
-              persistentVolumeClaim:
-                claimName: rag-logs
-            - name: venv
-              persistentVolumeClaim:
-                claimName: rag-venv
+  {{- end }}

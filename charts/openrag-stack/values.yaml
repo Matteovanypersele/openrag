@@ -5,19 +5,20 @@ persistence:
   accessMode: ReadWriteMany
   volumes:
     modelWeights: { size: 50Gi }
-    data: { size: 100Gi }
-    hydraConfig: { size: 1Gi }
-    logs: { size: 10Gi }
+    data: { size: 20Gi }
+    hydraConfig: { size: 10Mi }
+    logs: { size: 1Gi }
     venv: { size: 10Gi }
 
-# === Common resource presets (anchors) ===
-resourcesGpu: &resourcesGpu
-  requests: { cpu: 4, memory: "16Gi", nvidia.com/gpu: 1 }
-  limits: { cpu: 4, memory: "16Gi", nvidia.com/gpu: 1 }
-
-resourcesCpu: &resourcesCpu
-  requests: { cpu: 4, memory: "16Gi" }
-  limits: { cpu: 4, memory: "16Gi" }
+ray:
+  workers:
+    count: 2
+    replicas: 1
+    minReplicas: 1
+    maxReplicas: 1
+  image:
+    repository: ghcr.io/linagora/openrag-ray
+    tag: latest
 
 # === PostgreSQL (bitnami) ===
 postgresql:
@@ -77,7 +78,9 @@ vllm:
         requestGPU: 1
         limitCPU: 4
         limitMemory: "16Gi"
-        hf_token: "hf_XXXX"
+        hf_token:
+          secretName: rag-env-secrets
+          secretKey: HF_TOKEN
         vllmConfig:
           gpuMemoryUtilization: 0.3
           extraArgs: ["--trust-remote-code", "--task", "embed"]
@@ -86,15 +89,30 @@ vllm:
 # === Infinity reranker ===
 reranker:
   rerankerModelName: &rerankerModel "Alibaba-NLP/gte-multilingual-reranker-base"
-  image: michaelf34/infinity
   servicePort: &rerankerPort 7997
+  image:
+    repository: michaelf34/infinity
+    tag: latest
+  model:
+    id: Alibaba-NLP/gte-multilingual-reranker-base
   command:
     - v2
     - --model-id
     - *rerankerModel
     - --port
     - *rerankerPort
-
+  replicas: 1
+  runtimeClassName: nvidia
+  service:
+    type: ClusterIP
+    port: *rerankerPort
+  resources:
+    requests:
+      cpu: "4"
+      memory: "16Gi"
+    limits:
+      cpu: "4"
+      memory: "16Gi"
 # === OpenRAG main app ===
 openrag:
   image:
@@ -103,12 +121,19 @@ openrag:
   service:
     type: ClusterIP
     port: 8080
-  resources: *resourcesCpu
+  resources:
+    requests:
+      cpu: "4"
+      memory: "16Gi"
+    limits:
+      cpu: "4"
+      memory: "16Gi"
+  replicas: 1
 
 ingress:
   enabled: true
   className: "nginx"
-  host: "localhost" # or node external IP / future domain
+  host: ""
 
   paths:
     openrag:
@@ -192,7 +217,8 @@ env:
     UV_CACHE_DIR: "/tmp/uv-cache"
 
   secrets:
-    API_KEY: "sk-xxxx"
-    VLM_API_KEY: "sk-xxxx"
+    API_KEY: "sk-xxxx" # LLM API KEY
+    VLM_API_KEY: "sk-xxxx" # VLM API KEY
     EMBEDDER_API_KEY: "EMPTY"
-    AUTH_TOKEN: "sk-xxxx"
+    AUTH_TOKEN: "sk-xxxx" # API KEY for OpenRAG
+    HF_TOKEN: "hf_xxxx" # HuggingFace token

@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: reranker
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.reranker.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: reranker
@@ -17,25 +17,20 @@ spec:
         app.kubernetes.io/name: reranker
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      runtimeClassName: nvidia
+      runtimeClassName: {{ .Values.reranker.runtimeClassName }}
       containers:
         - name: reranker
-          image: michaelf34/infinity:latest
+          image: "{{ .Values.reranker.image.repository }}:{{ .Values.reranker.image.tag }}"
           args:
             - "v2"
             - "--model-id"
-            - "{{ .Values.env.config.RERANKER_MODEL | default "Alibaba-NLP/gte-multilingual-reranker-base" }}"
+            - "{{ .Values.reranker.model.id }}"
             - "--port"
-            - "{{ .Values.env.config.RERANKER_PORT | default "7997" }}"
+            - "{{ .Values.reranker.service.port }}"
           ports:
-            - containerPort: 7997
+            - containerPort: {{ .Values.reranker.service.port }}
           resources:
-            limits:
-              cpu: "4"
-              memory: "16Gi"
-            requests:
-              cpu: "4"
-              memory: "16Gi"
+            {{- toYaml .Values.reranker.resources | nindent 12 }}
           volumeMounts:
             - name: hf-cache
               mountPath: /app/.cache/huggingface
@@ -60,6 +55,6 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
   ports:
     - protocol: TCP
-      port: 7997
-      targetPort: 7997
-  type: ClusterIP
+      port: {{ .Values.reranker.service.port }}
+      targetPort: {{ .Values.reranker.service.port }}
+  type: {{ .Values.reranker.service.type }}

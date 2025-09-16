@@ -9,7 +9,6 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className | quote }}
   rules:
-    # - host: {{ .Values.ingress.host }}
     - http:
         paths:
           {{- if .Values.ingress.paths.openrag.enabled }}
@@ -21,4 +20,7 @@ spec:
                 port:
                   number: {{ .Values.env.config.RAY_SERVE_PORT }}
           {{- end }}
+      {{- with .Values.ingress.host }}
+      host: {{ . | quote }}
+      {{- end }}
 {{- end }}
