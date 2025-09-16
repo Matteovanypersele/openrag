@@ -28,9 +28,8 @@ jobs:
             # Keep version as-is for stable
             CHART_VERSION="$BASE_VERSION"
           else
-            # Append branch + commit hash for dev builds
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            CHART_VERSION="${BASE_VERSION}-dev-${SHORT_SHA}"
+            # Append branch for dev builds
+            CHART_VERSION="${BASE_VERSION}-dev"
             yq -i ".version = \"${CHART_VERSION}\"" charts/openrag-stack/Chart.yaml
           fi
 
@@ -49,4 +48,4 @@ jobs:
 
       - name: Push chart
         run: |
-          helm push openrag-stack-${CHART_VERSION}.tgz oci://ghcr.io/htagourti
+          helm push openrag-stack-${CHART_VERSION}.tgz oci://ghcr.io/linagora
