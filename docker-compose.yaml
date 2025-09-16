@@ -46,8 +46,15 @@ x-vllm: &vllm_template
     --max-num-seqs 1
   # --max-model-len ${MOX_MODEL_LEN:-2048}
   # gpu_memory_utilization, max-num-seqs et max-model-len can be tuned depending on your GPU memory
-  # ports:
-  #   - ${VLLM_PORT:-8000}:8000
+
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 60s
+  ports:
+    - ${VLLM_PORT:-8000}:8000
 services:
   # GPU - default 
   openrag:
@@ -62,8 +69,10 @@ services:
     profiles:
       - ''
     depends_on:
-    - milvus
-    - vllm-gpu
+      milvus:
+        condition: service_healthy
+      vllm-gpu:
+        condition: service_healthy
 
   # No GPU
   openrag-cpu:
@@ -72,8 +81,10 @@ services:
     profiles:
       - 'cpu'
     depends_on:
-    - milvus
-    - vllm-cpu
+      milvus:
+        condition: service_healthy
+      vllm-cpu:
+        condition: service_healthy
 
   rdb:
     image: postgres:15
