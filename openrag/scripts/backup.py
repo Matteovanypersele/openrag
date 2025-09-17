@@ -207,7 +207,7 @@ def main():
     partitions = { item['partition']: item for item in partitions }
 
     if 0 == len(partitions):
-        logger.error(f'No paritions meet given conditions.')
+        logger.error(f'No partitions meet given conditions.')
         return -1
 
     if args.verbose:
