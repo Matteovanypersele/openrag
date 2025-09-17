@@ -167,7 +167,7 @@ docker compose up --build -d  # Use 'down' to stop
 docker compose --profile cpu up --build -d # Use '--profile cpu down' to stop it properly
 ```
 
->[!INFO]
+>[!WARNING]
 > The initial launch is longer due to the installation of required dependencies.
 
 Once the app is up and running, visit `http://localhost:APP_PORT` or `http:X.X.X.X:APP_PORT` to access via:
@@ -177,8 +177,8 @@ Once the app is up and running, visit `http://localhost:APP_PORT` or `http:X.X.X
 
 2. **`/chainlit`** – [Chainlit chat UI](https://docs.chainlit.io/get-started/overview) to chat with your partitions. To disable it (e.g., for backend-only use), set `WITH_CHAINLIT_UI=False`.
 
-    >[!NOTE]
-    > Chainlit UI has no authentication by default. To enable it, follow the [dedicated guide](./docs/setup_chainlit_ui_auth.md). The same goes for chat data persistancy, enable it with this [guide](docs/chainlit_data_persistency.md)
+>[!NOTE]
+> Chainlit UI has no authentication by default. To enable it, follow the [dedicated guide](./docs/setup_chainlit_ui_auth.md). The same goes for chat data persistancy, enable it with this [guide](docs/chainlit_data_persistency.md)
 
 3. `http://localhost:INDEXERUI_PORT` to access the indexer ui for easy document ingestion, indexing, and management
 
