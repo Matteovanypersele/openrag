@@ -194,17 +194,20 @@ def main():
             logger=logger,
         )
 
-        partitions = pfm.list_partitions()
+        existing_partitions = { item['partition']: item for item in pfm.list_partitions() }
     except Exception as e:
         logger.error(f'Failed while accessing PartitionFileManager at {rdb["host"]}:{rdb["port"]}\n{e}')
         raise
 
     if args.include_only:
-        partitions = [ item for item in partitions if item['partition'] in args.include_only ]
+        partitions = {}
+        for part_name in args.include_only:
+            if part_name not in existing_partitions:
+                logger.error(f'Partition "{part_name}" has not been found.')
+            else:
+                partitions[part_name] = existing_partitions[part_name]
     else:
-        partitions = [ item for item in partitions ]
-
-    partitions = { item['partition']: item for item in partitions }
+        partitions = existing_partitions
 
     if 0 == len(partitions):
         logger.error(f'No partitions meet given conditions.')
