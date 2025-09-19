@@ -43,7 +43,7 @@ x-vllm: &vllm_template
     --trust-remote-code
     --task embed
     --gpu_memory_utilization 0.3
-    --max-num-seqs 1
+  # --max-num-seqs 1
   # --max-model-len ${MOX_MODEL_LEN:-2048}
   # gpu_memory_utilization, max-num-seqs et max-model-len can be tuned depending on your GPU memory
 
@@ -53,8 +53,8 @@ x-vllm: &vllm_template
     timeout: 5s
     retries: 3
     start_period: 60s
-  ports:
-    - ${VLLM_PORT:-8000}:8000
+  # ports:
+  #   - ${VLLM_PORT:-8000}:8000
 services:
   # GPU - default 
   openrag:
