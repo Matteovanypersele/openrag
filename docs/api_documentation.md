@@ -231,7 +231,7 @@ OpenAI-compatible text completion endpoint.
 
 ### Bulk File Indexing
 
-For indexing multiple files programmatically, you can use this script [`data_indexer.py`](../utility/data_indexer.py) utility script in the [`📁 utility`](../utility/) folder.
+For indexing multiple files programmatically, you can use this script [`data_indexer.py`](../utility/data_indexer.py) utility script in the [`📁 utility`](../utility/) folder or simply use **`indexer ui`**.
 
 ### OpenAI Client Integration
 

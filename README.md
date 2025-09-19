@@ -154,7 +154,7 @@ For CPU-only deployments or lightweight testing scenarios, you can consider swit
 #### 4.Deployment: Launch the app
 
 >[!IMPORTANT]
-> Before launching the app, make sure **`Indexer UI` (A Web interface for intuitive document ingestion, indexing, and management.)** is configured following the dedicated guide:
+> In case **`Indexer UI` (A Web interface for intuitive document ingestion, indexing, and management.)** is not configured already in your `.env`, follow this dedicated guide:
 ➡ [Deploy with Indexer UI](docs/setup_indexerui.md)
 
 You can run the application with either GPU or CPU support, depending on your system:

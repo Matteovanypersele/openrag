@@ -1,6 +1,7 @@
 # Data Persistency
 
 The [Chainlit data layer](https://docs.chainlit.io/data-layers/overview) allows you to persist conversations in chainlit.
+This project uses a [dockerized fork](https://github.com/Chainlit/chainlit-datalayer) for easier deployment and setup.
 
 In OpenRAG, one can activate **`Chainlit data layer`** following these steps:
 
