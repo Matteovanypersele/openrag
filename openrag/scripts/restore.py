@@ -1,19 +1,36 @@
 #!/usr/bin/env python3
 
 import sys
-import os
 import json
 import time
 
 from pymilvus import MilvusClient
 
-from config import load_config
 from utils.logger import get_logger
 from components.indexer.vectordb.utils import PartitionFileManager
 
 
 def read_rdb_section(fh, pfm, include_only, added_documents, existing_partitions, logger, verbose=False, dry_run=False):
-    part = json.loads(next(fh))
+    """
+    Reads and restores a relational database (RDB) section from the backup file.
+
+    Parameters:
+        fh:                   Backup file handle (already open for reading).
+        pfm:                  Manager for handling partition operations.
+        include_only:         List of partitions to include; if None, all are processed.
+        added_documents:      Dict mapping added partitions to sets of added file IDs.
+        existing_partitions:  Dict of already existing partitions to avoid duplicates.
+        logger:               Logger for status and error reporting.
+        verbose:              If True, logs additional info.
+        dry_run:              If True, no changes are made to the database.
+    """
+    try:
+        line = next(fh)
+        part = json.loads(line)
+    except Exception as e:
+        logger.exception(f'Failed while parsing the following json:\n{line}\n' + str(e))
+        raise
+
     if part['name'] in existing_partitions:
         raise Exception(f'Partition \"{part["name"]}\" already exists')
 
@@ -32,7 +49,7 @@ def read_rdb_section(fh, pfm, include_only, added_documents, existing_partitions
         try:
             doc = json.loads(line)
         except Exception as e:
-            logger.exception(f'Failed while parsing the following json:\n{line}\n')
+            logger.exception(f'Failed while parsing the following json:\n{line}\n' + str(e))
             raise
 
         if not dry_run:
@@ -53,10 +70,23 @@ def read_rdb_section(fh, pfm, include_only, added_documents, existing_partitions
 
 
 def insert_into_vdb(client, collection_name, batch, logger, verbose=False, dry_run=False):
+    """
+    Inserts a batch of chunks into the vector database.
+
+    Parameters:
+        client:           Milvus client instance.
+        collection_name:  Target collection name.
+        batch:            List of chunks to insert.
+        logger:           Logger for status and error reporting.
+        verbose:          If True, logs additional info.
+        dry_run:          If True, skips actual insertion.
+    """
     before = time.time()
     try:
         if not dry_run:
             res = client.insert(collection_name=collection_name, data=batch)
+            if 'insert_count' not in res or res['insert_count'] != len(batch):
+                raise Exception(f'Unexpected number of items inserted: \'insert_count\'=={res["insert_count"]} with len(batch)=={len(batch)}')
     except Exception as e:
         logger.exception(f'{type(e)} in client.insert({collection_name}, {len(batch)} items)')
         raise
@@ -66,6 +96,19 @@ def insert_into_vdb(client, collection_name, batch, logger, verbose=False, dry_r
 
 
 def read_vdb_section(fh, collection_name, added_documents, client, batch_size, logger, verbose=False, dry_run=False):
+    """
+    Reads and restores a vector database (VDB) section from the backup file.
+
+    Parameters:
+        fh:               Backup file handle (already open for reading).
+        collection_name:  Target VDB collection name.
+        added_documents:  Dict mapping partitions to sets of file IDs that were successfully added in RDB.
+        client:           Milvus client instance.
+        batch_size:       Number of documents per batch insert.
+        logger:           Logger for status and error reporting.
+        verbose:          If True, logs additional info.
+        dry_run:          If True, no changes are made to the database.
+    """
     if verbose:
         logger.info(f'Read vdb section')
 
@@ -89,14 +132,35 @@ def read_vdb_section(fh, collection_name, added_documents, client, batch_size, l
         insert_into_vdb(client, collection_name, batch, logger, verbose, dry_run)
 
 
+def open_backup_file(file_name, logger):
+    """
+    Opens a backup file for reading, with support for plain text and LZMA-compressed (.xz) files.
+
+    Parameters:
+        file_name:  Path to the backup file.
+        logger:     Logger for status and error reporting.
+
+    Returns:
+        file object:  Opened file handle in text mode.
+    """
+    try:
+        if file_name.endswith('.xz'):
+            import lzma
+            return lzma.open(file_name, 'rt', encoding='utf-8')
+        else:
+            return open(file_name, 'rt', encoding='utf-8')
+    except Exception as e:
+        logger.error(f'Failed while opening file \'{file_name}\' for reading:\n' + str(e))
+        raise
+
+
 def main():
     """
     Main entry point:
       - Parses CLI arguments.
       - Loads OpenRAG configuration.
       - Connects to RDB (PostgreSQL) and VDB (Milvus).
-      - Retrieves and filters partitions.
-      - Dumps RDB and VDB data.
+      - Restores RDB and VDB data.
 
     Parameters:
         None (arguments are parsed from sys.argv)
@@ -164,28 +228,28 @@ def main():
         for part_name in args.include_only:
             if part_name in existing_partitions:
                 logger.error(f'Partition "{part_name}" already exists')
-                return -1
+                return 1
 
 
     client = MilvusClient(uri=f"http://{vdb['host']}:{vdb['port']}")
 
-    if args.input.endswith('.xz'):
-        import lzma
-        fh = lzma.open(args.input, 'rt', encoding='utf-8')
-    else:
-        fh = open(args.input, 'rt', encoding='utf-8')
+    try:
+        with open_backup_file(args.input, logger) as fh:
+            added_documents = {}
 
+            for line in fh:
+                line = line.strip()
 
-    added_documents = {}
+                if line in [ 'rdb' ]:
+                    read_rdb_section(fh, pfm, args.include_only, added_documents, existing_partitions, logger, args.verbose, args.dry_run)
 
-    for line in fh:
-        line = line.strip()
+                if line in [ 'vdb' ]:
+                    read_vdb_section(fh, vdb['collection_name'], added_documents, client, args.batch_size, logger, args.verbose, args.dry_run)
+    except Exception as e:
+        client.close()
+        logger.error(f'Error: ' + str(e))
 
-        if line in [ 'rdb' ]:
-            read_rdb_section(fh, pfm, args.include_only, added_documents, existing_partitions, logger, args.verbose, args.dry_run)
-
-        if line in [ 'vdb' ]:
-            read_vdb_section(fh, vdb['collection_name'], added_documents, client, args.batch_size, logger, args.verbose, args.dry_run)
+    client.close()
 
 
 if __name__ == '__main__':
