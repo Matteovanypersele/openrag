@@ -246,10 +246,10 @@ def main():
                 if line in [ 'vdb' ]:
                     read_vdb_section(fh, vdb['collection_name'], added_documents, client, args.batch_size, logger, args.verbose, args.dry_run)
     except Exception as e:
-        client.close()
         logger.error(f'Error: ' + str(e))
-
-    client.close()
+        raise
+    finally:
+        client.close()
 
 
 if __name__ == '__main__':
