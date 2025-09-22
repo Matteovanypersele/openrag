@@ -4,13 +4,24 @@ import sys
 import json
 import time
 
+from typing import IO, Any, Dict, List, Optional, Set, Tuple
+
 from pymilvus import MilvusClient
 
 from utils.logger import get_logger
 from components.indexer.vectordb.utils import PartitionFileManager
 
 
-def read_rdb_section(fh, pfm, include_only, added_documents, existing_partitions, logger, verbose=False, dry_run=False):
+def read_rdb_section(
+        fh: IO[str],
+        pfm: PartitionFileManager,
+        include_only: Optional[List[str]],
+        added_documents: Dict[str, Set[str]],
+        existing_partitions: Dict[str, Any],
+        logger: Any,
+        verbose: bool = False,
+        dry_run: bool = False
+    ) -> None:
     """
     Reads and restores a relational database (RDB) section from the backup file.
 
@@ -69,7 +80,14 @@ def read_rdb_section(fh, pfm, include_only, added_documents, existing_partitions
             logger.error(f'Can\'t add file {doc["file_id"]} to partition {part["name"]}')
 
 
-def insert_into_vdb(client, collection_name, batch, logger, verbose=False, dry_run=False):
+def insert_into_vdb(
+        client: MilvusClient,
+        collection_name: str,
+        batch: list,
+        logger: Any,
+        verbose: bool = False,
+        dry_run: bool = False
+    ) -> None:
     """
     Inserts a batch of chunks into the vector database.
 
@@ -95,7 +113,16 @@ def insert_into_vdb(client, collection_name, batch, logger, verbose=False, dry_r
         logger.info(f'Inserting {len(batch)} items took {elapsed:.2f}s')
 
 
-def read_vdb_section(fh, collection_name, added_documents, client, batch_size, logger, verbose=False, dry_run=False):
+def read_vdb_section(
+        fh: IO[str],
+        collection_name: str,
+        added_documents: Dict[str, Set[str]],
+        client: MilvusClient,
+        batch_size int,
+        logger: Any,
+        verbose: bool = False,
+        dry_run: bool = False
+    ) -> None:
     """
     Reads and restores a vector database (VDB) section from the backup file.
 
@@ -132,7 +159,10 @@ def read_vdb_section(fh, collection_name, added_documents, client, batch_size, l
         insert_into_vdb(client, collection_name, batch, logger, verbose, dry_run)
 
 
-def open_backup_file(file_name, logger):
+def open_backup_file(
+        file_name: str,
+        logger: Any
+    ) -> IO[str]:
     """
     Opens a backup file for reading, with support for plain text and LZMA-compressed (.xz) files.
 
@@ -168,7 +198,7 @@ def main():
     Returns:
         int: Exit code (0 on success, non-zero on failure).
     """
-    def load_openrag_config(logger):
+    def load_openrag_config(logger: Any) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Loads OpenRAG configuration.
 
