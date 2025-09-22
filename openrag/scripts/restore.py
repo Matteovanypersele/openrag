@@ -136,6 +136,8 @@ def read_vdb_section(
         verbose:          If True, logs additional info.
         dry_run:          If True, no changes are made to the database.
     """
+    assert(batch_size > 0)
+
     if verbose:
         logger.info(f'Read vdb section')
 
