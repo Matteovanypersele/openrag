@@ -126,6 +126,37 @@ def dump_vdb_part(
         logger.info(f'{cnt} chunks written')
 
 
+def open_output_file(
+        file_name: str,
+        logger: Any
+    ) -> IO[str]:
+    """
+    Opens output file for writing
+
+    Parameters:
+        file_name:  Path to the output file or '-' for STDOUT
+        logger:     Logger for status and error reporting.
+
+    Returns:
+        file object:  Opened file handle in text mode.
+    """
+    if file_name in [ '-' ]:
+        return sys.stdout
+
+    if os.path.isfile(file_name):
+        raise Exception(f'File \'{file_name}\' already exists.')
+
+    try:
+        if file_name.endswith('.xz'):
+            import lzma
+            return lzma.open(file_name, 'wt', encoding='utf-8', preset=9 | lzma.PRESET_EXTREME)
+        else:
+            return open(file_name, 'wt', encoding='utf-8')
+    except Exception as e:
+        logger.error(f'Failed while opening file \'{file_name}\' for writing:\n' + str(e))
+        raise
+
+
 def main():
     """
     Main entry point:
@@ -168,7 +199,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='OpenRAG backup tool')
     parser.add_argument('-i', '--include-only', nargs='*', help='Include only listed partitions')
-    parser.add_argument('-o', '--output', required=True, help='Output file name')
+    parser.add_argument('-o', '--output', required=True, help='Output file name (- for STDOUT)')
     parser.add_argument('-b', '--batch-size', default=1024, type=int, help='Batch size used to iterate Milvus')
     parser.add_argument('-v', '--verbose', default=False, action='store_true', help='Be verbose')
 
@@ -181,11 +212,6 @@ def main():
     if args.verbose:
         logger.info(f'rdb @ {rdb["host"]}:{rdb["port"]} | vdb @ {vdb["host"]}:{vdb["port"]} | collection: {vdb["collection_name"]}')
 
-
-    # Open output file
-    if os.path.isfile(args.output):
-        logger.error(f'File \'{args.output}\' already exists.')
-        return -1
 
     # List existing partitions
     try:
@@ -211,7 +237,7 @@ def main():
 
     if 0 == len(partitions):
         logger.error(f'No partitions meet given conditions.')
-        return -1
+        return 1
 
     if args.verbose:
         partitions_str = ', '.join(partitions)
@@ -231,12 +257,19 @@ def main():
         logger.error(f'Can\'t access Milvus collection {vdb["collection_name"]} at {vdb["host"]}:{vdb["port"]}\n{e}')
         raise
 
-    with open(args.output, 'wt', encoding='utf-8') as out_fh:
-        # Dump data from RDB (one line per document)
-        dump_rdb_part(out_fh, pfm, partitions, logger, args.verbose)
 
-        # Dump data from VDB (one line per chunk)
-        dump_vdb_part(out_fh, vdb_collection, partitions, logger, args.batch_size, args.verbose)
+    try:
+        with open_output_file(args.output, logger) as out_fh:
+            # Dump data from RDB (one line per document)
+            dump_rdb_part(out_fh, pfm, partitions, logger, args.verbose)
+
+            # Dump data from VDB (one line per chunk)
+            dump_vdb_part(out_fh, vdb_collection, partitions, logger, args.batch_size, args.verbose)
+
+            out_fh.flush()
+    except Exception as e:
+        logger.exception(f'ERROR: ' + str(e))
+        return 1
 
 
     return 0
