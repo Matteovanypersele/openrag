@@ -230,6 +230,7 @@ def main():
         for part_name in args.include_only:
             if part_name not in existing_partitions:
                 logger.error(f'Partition "{part_name}" has not been found.')
+                return 1
             else:
                 partitions[part_name] = existing_partitions[part_name]
     else:
