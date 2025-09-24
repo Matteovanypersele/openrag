@@ -6,9 +6,9 @@ from urllib.parse import urlparse
 import chainlit as cl
 import httpx
 from chainlit.context import get_context
+from consts import PARTITION_PREFIX
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from consts import PARTITION_PREFIX
 from utils.logger import get_logger
 
 load_dotenv()
@@ -21,6 +21,14 @@ AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")
 CHAINLIT_AUTH_SECRET = os.environ.get("CHAINLIT_AUTH_SECRET")
 CHAINLIT_USERNAME = os.environ.get("CHAINLIT_USERNAME", "OpenRAG")
 CHAINLIT_PASSWORD = os.environ.get("CHAINLIT_PASSWORD", "OpenRAG2025")
+
+commands = [
+    {
+        "id": "DeepSearch",
+        "icon": "brain-cog",
+        "description": "Use DeepSearch RAG to handle complex queries.\nSlower but more accurate answers.\nUse in an empty context as it consumes more tokens.",
+    },
+]
 
 headers = {
     "accept": "application/json",
@@ -107,6 +115,7 @@ async def on_chat_start():
                 url=f"{INTERNAL_BASE_URL}/health_check", headers=headers
             )
             print(response.text)
+        await cl.context.emitter.set_commands(commands)
     except Exception as e:
         logger.exception("An error occured while checking the API health", error=str(e))
         await cl.Message(
@@ -191,6 +200,9 @@ async def on_message(message: cl.Message):
         "temperature": 0.2,
         "stream": True,
         "frequency_penalty": 0.4,
+        "metadata": {
+            "use_map_reduce": message.command == "DeepSearch",
+        },
     }
 
     async with cl.Step(name="Searching for relevant documents..."):
