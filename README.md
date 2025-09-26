@@ -156,7 +156,7 @@ For CPU-only deployments or lightweight testing scenarios, you can consider swit
 > In case **`Indexer UI` (A Web interface for intuitive document ingestion, indexing, and management.)** is not configured already in your `.env`, follow this dedicated guide:
 ➡ [Deploy with Indexer UI](docs/setup_indexerui.md)
 
-* Simple and quick launch
+* **Simple and quick** launch for testing
   >[!IMPORTANT]
   > For a **simple `quick deployment`** using only the docker-compose file, only the [quick_start **folder**](./quick_start/) is required. Follow these steps to launch the application:
   
