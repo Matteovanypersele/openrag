@@ -5,6 +5,12 @@ from fastapi.responses import JSONResponse
 from utils.dependencies import get_vectordb
 from utils.logger import get_logger
 
+from .utils import (
+    current_user_or_admin_partitions_list,
+    require_partition_owner,
+    require_partition_viewer,
+)
+
 logger = get_logger()
 router = APIRouter()
 
@@ -14,25 +20,26 @@ def _quote_param_value(s: str) -> str:
 
 
 @router.get("/")
-async def list_existant_partitions(vectordb=Depends(get_vectordb)):
-    try:
+async def list_existant_partitions(
+    vectordb=Depends(get_vectordb),
+    partitions=Depends(current_user_or_admin_partitions_list),
+):
+    if partitions == ["all"]:
         partitions = await vectordb.list_partitions.remote()
-        logger.debug(
-            "Returned list of existing partitions.", partition_count=len(partitions)
-        )
-        return JSONResponse(
-            status_code=status.HTTP_200_OK, content={"partitions": partitions}
-        )
-    except Exception as e:
-        logger.exception("Failed to list partitions")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list partitions: {str(e)}",
-        )
+    logger.debug(
+        "Returned list of existing partitions.", partition_count=len(partitions)
+    )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"partitions": partitions}
+    )
 
 
 @router.delete("/{partition}")
-async def delete_partition(partition: str, vectordb=Depends(get_vectordb)):
+async def delete_partition(
+    partition: str,
+    vectordb=Depends(get_vectordb),
+    partition_owner=Depends(require_partition_owner),
+):
     await vectordb.delete_partition.remote(partition)
     logger.debug("Partition successfully deleted.")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -44,6 +51,7 @@ async def list_files(
     partition: str,
     limit: int | None = None,
     vectordb=Depends(get_vectordb),
+    partition_viewer=Depends(require_partition_viewer),
 ):
     log = logger.bind(partition=partition)
     file_obj_l = await vectordb.list_partition_files.remote(
@@ -76,6 +84,7 @@ async def get_file(
     partition: str,
     file_id: str,
     vectordb=Depends(get_vectordb),
+    partition_viewer=Depends(require_partition_viewer),
 ):
     results = await vectordb.get_file_chunks.remote(
         partition=partition, file_id=file_id, include_id=True
@@ -102,6 +111,7 @@ async def list_all_chunks(
     partition: str,
     include_embedding: bool = True,
     vectordb=Depends(get_vectordb),
+    partition_viewer=Depends(require_partition_viewer),
 ):
     chunks = await vectordb.list_all_chunk.remote(
         partition=partition, include_embedding=include_embedding
@@ -117,3 +127,94 @@ async def list_all_chunks(
         for chunk in chunks
     ]
     return JSONResponse(status_code=status.HTTP_200_OK, content={"chunks": chunks})
+
+
+@router.post("/{partition}")
+async def create_partition(
+    request: Request, partition: str, vectordb=Depends(get_vectordb)
+):
+    if await vectordb.partition_exists.remote(partition):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Partition '{partition}' already exists.",
+        )
+    user_id = request.state.user["id"]
+    await vectordb.create_partition.remote(partition=partition, user_id=user_id)
+    return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.get("/{partition}/users")
+async def list_partition_users(
+    partition: str,
+    vectordb=Depends(get_vectordb),
+    partition_owner=Depends(require_partition_owner),
+):
+    """
+    List all users who are members of the given partition.
+    """
+    log = logger.bind(partition=partition)
+
+    members = await vectordb.list_partition_members.remote(partition=partition)
+
+    log.debug("Returned list of partition members.", member_count=len(members))
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"members": members})
+
+
+@router.post("/{partition}/users")
+async def add_partition_user(
+    partition: str,
+    user_id: int,
+    role: str = "viewer",
+    vectordb=Depends(get_vectordb),
+    partition_owner=Depends(require_partition_owner),
+):
+    """
+    Add a user as a member of the given partition.
+    """
+    log = logger.bind(partition=partition, user_id=user_id)
+
+    await vectordb.add_partition_member.remote(
+        partition=partition, user_id=user_id, role=role
+    )
+
+    log.debug("User added to partition successfully")
+    return Response(status_code=status.HTTP_201_CREATED)
+
+
+@router.delete("/{partition}/users/{user_id}")
+async def remove_partition_user(
+    partition: str,
+    user_id: int,
+    vectordb=Depends(get_vectordb),
+    partition_owner=Depends(require_partition_owner),
+):
+    """
+    Remove a user from the given partition.
+    """
+    log = logger.bind(partition=partition, user_id=user_id)
+
+    await vectordb.remove_partition_member.remote(partition=partition, user_id=user_id)
+
+    log.debug("User removed from partition successfully")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{partition}/users/{user_id}")
+async def update_partition_user_role(
+    partition: str,
+    user_id: int,
+    role: str,
+    vectordb=Depends(get_vectordb),
+    partition_owner=Depends(require_partition_owner),
+):
+    """
+    Update a user's role in the given partition.
+    """
+    log = logger.bind(partition=partition, user_id=user_id, role=role)
+
+    await vectordb.update_partition_member_role.remote(
+        partition=partition, user_id=user_id, new_role=role
+    )
+
+    log.debug("User role updated successfully")
+    return Response(status_code=status.HTTP_200_OK)

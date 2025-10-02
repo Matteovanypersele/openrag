@@ -90,6 +90,30 @@ class VDBFileNotFoundError(VDBError):
         )
 
 
+class VDBUserNotFound(VDBError):
+    """Raised when a user is not found in the vector database."""
+
+    def __init__(self, message: str, **kwargs):
+        super().__init__(
+            message=message,
+            code="VDB_USER_NOT_FOUND",
+            status_code=404,
+            **kwargs,
+        )
+
+
+class VDBMembershipNotFound(VDBError):
+    """Raised when a partition membership is not found in the vector database."""
+
+    def __init__(self, message: str, **kwargs):
+        super().__init__(
+            message=message,
+            code="VDB_MEMBERSHIP_NOT_FOUND",
+            status_code=404,
+            **kwargs,
+        )
+
+
 class UnexpectedVDBError(VDBError):
     """Raised for unexpected errors in vector database operations."""
 

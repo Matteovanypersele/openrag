@@ -19,10 +19,11 @@ from typing import Optional
 
 import uvicorn
 from config import load_config
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from routers.actors import router as actors_router
 from routers.extract import router as extract_router
@@ -31,6 +32,9 @@ from routers.openai import router as openai_router
 from routers.partition import router as partition_router
 from routers.queue import router as queue_router
 from routers.search import router as search_router
+from routers.users import router as users_router
+from starlette.middleware.base import BaseHTTPMiddleware
+from utils.dependencies import vectordb
 from utils.exceptions import OpenRAGError
 from utils.logger import get_logger
 
@@ -70,20 +74,61 @@ DISABLE_EXCEPTION_HANDLER: bool = (
 security = HTTPBearer()
 
 
-# Dependency to verify token
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    if AUTH_TOKEN is None:
-        return  # Auth disabled
-    if token != AUTH_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or missing token"
-        )
+app = FastAPI()
+bearer_scheme = HTTPBearer()
 
 
-# Apply globally only if AUTH_TOKEN is set
-dependencies = [Depends(verify_token)] if AUTH_TOKEN else []
-app = FastAPI(dependencies=dependencies)
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Openrag API",
+        version="1.0.0",
+        routes=app.routes,
+    )
+    # Add global security
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {"type": "http", "scheme": "bearer"}
+    }
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Skip if no AUTH_TOKEN configured
+        if AUTH_TOKEN is None:
+            return await call_next(request)
+
+        if request.url.path in ["/docs", "/openapi.json", "/redoc"]:
+            return await call_next(request)
+
+        # Extract Bearer token
+        auth = request.headers.get("authorization")
+        if not auth or not auth.lower().startswith("bearer "):
+            return JSONResponse(status_code=403, content={"detail": "Missing token"})
+        token = auth.split(" ", 1)[1]
+
+        # Lookup user in DB
+        user = await vectordb.get_user_by_token.remote(token)
+        if not user:
+            return JSONResponse(status_code=403, content={"detail": "Invalid token"})
+
+        # Load user partitions
+        user_partitions = await vectordb.list_user_partitions.remote(user["id"])
+
+        # Attach to request
+        request.state.user = user
+        request.state.user_partitions = user_partitions
+        return await call_next(request)
+
+
+# Register once
+app.add_middleware(AuthMiddleware)
 
 
 # Exception handlers
@@ -146,6 +191,8 @@ app.include_router(partition_router, prefix="/partition", tags=[Tags.PARTITION])
 app.include_router(queue_router, prefix="/queue", tags=[Tags.QUEUE])
 # Mount the actors router
 app.include_router(actors_router, prefix="/actors", tags=[Tags.ACTORS])
+# Mount the users router
+app.include_router(users_router, prefix="/users", tags=["Users"])
 
 if WITH_OPENAI_API:
     # Mount the openai router

@@ -60,7 +60,7 @@ class BaseVectorDB(ABC):
         pass
 
     @abstractmethod
-    async def async_add_documents(self, chunks: list[Document]):
+    async def async_add_documents(self, chunks: list[Document], user: dict):
         pass
 
     @abstractmethod
@@ -326,7 +326,7 @@ class MilvusDB(BaseVectorDB):
     async def list_collections(self) -> list[str]:
         return self._client.list_collections()
 
-    async def async_add_documents(self, chunks: list[Document]) -> None:
+    async def async_add_documents(self, chunks: list[Document], user: dict) -> None:
         """Asynchronously add documents to the vector store."""
 
         try:
@@ -365,7 +365,10 @@ class MilvusDB(BaseVectorDB):
 
             # insert file_id and partition into partition_file_manager
             self.partition_file_manager.add_file_to_partition(
-                file_id=file_id, partition=partition, file_metadata=file_metadata
+                file_id=file_id,
+                partition=partition,
+                file_metadata=file_metadata,
+                user_id=user.get("id"),
             )
             self.logger.info(f"File '{file_id}' added to partition '{partition}'")
         except EmbeddingError as e:
@@ -502,19 +505,7 @@ class MilvusDB(BaseVectorDB):
     async def delete_file(self, file_id: str, partition: str):
         log = self.logger.bind(file_id=file_id, partition=partition)
         try:
-            if not self.partition_file_manager.file_exists_in_partition(
-                file_id=file_id, partition=partition
-            ):
-                # raise VDB
-                log.exception(
-                    f"File ID {file_id} does not exist in partition {partition}"
-                )
-                raise VDBFileNotFoundError(
-                    f"File ID '{file_id}' does not exist in partition {partition}",
-                    collection_name=self.collection_name,
-                    partition=partition,
-                    file_id=file_id,
-                )
+            self._check_file_exists(file_id, partition)
             res = await self._async_client.delete(
                 collection_name=self.collection_name,
                 filter=f"partition == '{partition}' and file_id == '{file_id}'",
@@ -553,19 +544,7 @@ class MilvusDB(BaseVectorDB):
     ):
         log = self.logger.bind(file_id=file_id, partition=partition)
         try:
-            if not self.partition_file_manager.file_exists_in_partition(
-                file_id=file_id, partition=partition
-            ):
-                log.exception(
-                    f"File ID '{file_id}' does not exist in partition '{partition}'"
-                )
-                raise VDBFileNotFoundError(
-                    f"File ID '{file_id}' does not exist in partition '{partition}'",
-                    collection_name=self.collection_name,
-                    partition=partition,
-                    file_id=file_id,
-                )
-
+            self._check_file_exists(file_id, partition)
             # Adjust filter expression based on the type of value
             filter_expression = "partition == {partition} and file_id == {file_id}"
             filter_params = {"partition": partition, "file_id": file_id}
@@ -686,30 +665,11 @@ class MilvusDB(BaseVectorDB):
 
     def list_partition_files(self, partition: str, limit: Optional[int] = None):
         try:
-            partition_dict = self.partition_file_manager.list_partition_files(
+            self._check_partition_exists(partition)
+            return self.partition_file_manager.list_partition_files(
                 partition=partition, limit=limit
             )
-            if not partition_dict:
-                self.logger.warning(
-                    f"Partition does exist or No files found in partition {partition}"
-                )
-                raise VDBPartitionNotFound(
-                    f"Partition `{partition}` does not exist or no files found.",
-                    collection_name=self.collection_name,
-                    partition=partition,
-                )
 
-            return partition_dict
-
-        except MilvusException as e:
-            self.logger.exception(
-                f"Failed to list files in partition {partition}", error=str(e)
-            )
-            raise VDBPartitionNotFound(
-                f"Failed to list files in partition `{partition}`: {str(e)}",
-                collection_name=self.collection_name,
-                partition=partition,
-            )
         except VDBError:
             raise
 
@@ -786,16 +746,7 @@ class MilvusDB(BaseVectorDB):
         List all chunk from a given partition.
         """
         try:
-            if not self.partition_file_manager.partition_exists(partition):
-                self.logger.warning(
-                    f"Partition '{partition}' does not exist or no files found."
-                )
-                # Raise an exception if the partition does not exist
-                raise VDBPartitionNotFound(
-                    f"Partition '{partition}' not found.",
-                    collection_name=self.collection_name,
-                    partition=partition,
-                )
+            self._check_partition_exists(partition)
 
             # Create a filter expression for the query
             filter_expression = "partition == {partition}"
@@ -859,6 +810,116 @@ class MilvusDB(BaseVectorDB):
                 f"Unexpected error while listing all chunks in partition {partition}: {str(e)}",
                 collection_name=self.collection_name,
                 partition=partition,
+            )
+
+    async def create_user(
+        self,
+        email: str | None = None,
+        display_name: str | None = None,
+        external_ref: str | None = None,
+        is_admin: bool = False,
+    ):
+        return self.partition_file_manager.create_user(
+            email, display_name, external_ref, is_admin
+        )
+
+    async def get_user(self, user_id: int):
+        self._check_user_exists(user_id)
+        return self.partition_file_manager.get_user_by_id(user_id)
+
+    async def delete_user(self, user_id: int):
+        self._check_user_exists(user_id)
+        user_partitions = [
+            p["partition"]
+            for p in self.partition_file_manager.list_user_partitions(user_id)
+        ]
+        for partition in user_partitions:
+            self.partition_file_manager.delete_partition(partition)
+        self.partition_file_manager.delete_user(user_id)
+
+    async def list_users(self):
+        return self.partition_file_manager.list_users()
+
+    async def get_user_by_token(self, token: str):
+        return self.partition_file_manager.get_user_by_token(token)
+
+    async def regenerate_user_token(self, user_id: int):
+        self._check_user_exists(user_id)
+        return self.partition_file_manager.regenerate_user_token(user_id)
+
+    async def list_user_partitions(self, user_id: int):
+        self._check_user_exists(user_id)
+        return self.partition_file_manager.list_user_partitions(user_id)
+
+    async def list_partition_members(self, partition: str) -> List[dict]:
+        self._check_partition_exists(partition)
+        return self.partition_file_manager.list_partition_members(partition)
+
+    async def update_partition_member_role(
+        self, partition: str, user_id: int, new_role: str
+    ):
+        self._check_membership_exists(partition, user_id)
+        self.partition_file_manager.update_partition_member_role(
+            partition, user_id, new_role
+        )
+        self.logger.info(
+            f"User_id {user_id} role updated to '{new_role}' in partition '{partition}'."
+        )
+
+    async def create_partition(self, partition: str, user_id: int):
+        self._check_user_exists(user_id)
+        self.partition_file_manager.create_partition(partition, user_id)
+        self.logger.info(f"Partition '{partition}' created by user_id {user_id}.")
+
+    async def add_partition_member(self, partition: str, user_id: int, role: str):
+        self._check_partition_exists(partition)
+        self._check_user_exists(user_id)
+        self.partition_file_manager.add_partition_member(partition, user_id, role)
+        self.logger.info(f"User_id {user_id} added to partition '{partition}'.")
+
+    async def remove_partition_member(self, partition: str, user_id: int) -> bool:
+        self._check_membership_exists(partition, user_id)
+        self.partition_file_manager.remove_partition_member(partition, user_id)
+        self.logger.info(f"User_id {user_id} removed from partition '{partition}'.")
+
+    def _check_user_exists(self, user_id: int):
+        if not self.partition_file_manager.user_exists(user_id):
+            self.logger.warning(f"User with ID {user_id} does not exist.")
+            raise VDBUserNotFound(
+                f"User with ID {user_id} does not exist.",
+                collection_name=self.collection_name,
+                user_id=user_id,
+            )
+
+    def _check_partition_exists(self, partition: str):
+        if not self.partition_file_manager.partition_exists(partition):
+            self.logger.warning(f"Partition '{partition}' does not exist.")
+            raise VDBPartitionNotFound(
+                f"Partition '{partition}' does not exist.",
+                collection_name=self.collection_name,
+                partition=partition,
+            )
+
+    def _check_membership_exists(self, partition: str, user_id: int):
+        self._check_partition_exists(partition)
+        self._check_user_exists(user_id)
+        if not self.partition_file_manager.user_is_partition_member(user_id, partition):
+            raise VDBMembershipNotFound(
+                f"User with ID {user_id} is not a member of partition '{partition}'.",
+                collection_name=self.collection_name,
+                user_id=user_id,
+                partition=partition,
+            )
+
+    def _check_file_exists(self, file_id, partition: str):
+        if not self.partition_file_manager.file_exists_in_partition(
+            file_id=file_id, partition=partition
+        ):
+            raise VDBFileNotFoundError(
+                f"File ID '{file_id}' does not exist in partition '{partition}'",
+                collection_name=self.collection_name,
+                partition=partition,
+                file_id=file_id,
             )
 
 

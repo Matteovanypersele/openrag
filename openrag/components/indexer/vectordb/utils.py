@@ -98,7 +98,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    external_ref = Column(String, unique=True, nullable=True)  # IdP/user id upstream
+    external_ref = Column(String, unique=True, nullable=True)
     email = Column(String, unique=True, nullable=True, index=True)
     display_name = Column(String, nullable=True)
     token = Column(String, unique=True, nullable=True, index=True)
@@ -147,10 +147,10 @@ class PartitionFileManager:
 
             Base.metadata.create_all(self.engine)
             self.logger = logger
+            self.Session = sessionmaker(bind=self.engine)
             AUTH_TOKEN = os.getenv("AUTH_TOKEN")
             if AUTH_TOKEN:
                 self._ensure_admin_user(AUTH_TOKEN)
-            self.Session = sessionmaker(bind=self.engine)
 
         except Exception as e:
             raise VDBConnectionError(
@@ -207,14 +207,18 @@ class PartitionFileManager:
             return result
 
     def add_file_to_partition(
-        self, file_id: str, partition: str, file_metadata: Optional[Dict] = None
+        self,
+        file_id: str,
+        partition: str,
+        file_metadata: Optional[Dict] = None,
+        user_id: Optional[int] = None,
     ):
         """Add a file to a partition - Optimized with direct partition lookup"""
         log = self.logger.bind(file_id=file_id, partition=partition)
         with self.Session() as session:
             try:
                 existing_file = (
-                    session.query(File.id)  # Only select id, not entire object
+                    session.query(File.id)
                     .filter(File.file_id == file_id, File.partition_name == partition)
                     .first()
                 )
@@ -231,6 +235,11 @@ class PartitionFileManager:
                     partition_obj = Partition(partition=partition)
                     session.add(partition_obj)
                     log.info("Created new partition")
+
+                    membership = PartitionMembership(
+                        partition_name=partition, user_id=user_id, role="owner"
+                    )
+                    session.add(membership)
 
                 # Add file to partition
                 file = File(
@@ -263,24 +272,6 @@ class PartitionFileManager:
                     session.delete(file)
                     session.commit()
                     log.info(f"Removed file {file_id} from partition {partition}")
-
-                    # Use count query instead of loading all files
-                    file_count = (
-                        session.query(File)
-                        .filter(File.partition_name == partition)
-                        .count()
-                    )
-                    if file_count == 0:
-                        partition_obj = (
-                            session.query(Partition)
-                            .filter(Partition.partition == partition)
-                            .first()
-                        )
-                        if partition_obj:
-                            session.delete(partition_obj)
-                            session.commit()
-                            log.info("Deleted empty partition")
-
                     return True
                 log.warning("File not found in partition")
                 return False
@@ -352,7 +343,7 @@ class PartitionFileManager:
     ) -> dict:
         """Create a user and generate an API token for them."""
         with self.Session() as s:
-            token = secrets.token_hex(32)  # 64-char random token
+            token = f"or-{secrets.token_hex(16)}"
 
             user = User(
                 email=email,
@@ -373,12 +364,109 @@ class PartitionFileManager:
                 "is_admin": user.is_admin,
             }
 
-    def get_user_by_email(self, email: str) -> Optional[User]:
+    def list_users(self) -> list[dict]:
         with self.Session() as s:
-            return s.query(User).filter(User.email == email).first()
+            users = s.query(User).all()
+            return [
+                {
+                    "id": u.id,
+                    "email": u.email,
+                    "display_name": u.display_name,
+                    "external_ref": u.external_ref,
+                    "is_admin": u.is_admin,
+                    "created_at": u.created_at.isoformat(),
+                }
+                for u in users
+            ]
+
+    def get_user_by_token(self, token: str) -> Optional[dict]:
+        with self.Session() as s:
+            user = s.query(User).filter(User.token == token).first()
+            if not user:
+                return None
+
+            memberships = [
+                {
+                    "partition": m.partition_name,
+                    "role": m.role,
+                    "added_at": m.added_at.isoformat(),
+                }
+                for m in user.memberships
+            ]
+
+            return {
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+                "is_admin": user.is_admin,
+                "memberships": memberships,
+            }
+
+    def get_user_by_id(self, user_id: int) -> Optional[dict]:
+        with self.Session() as s:
+            user = s.query(User).filter(User.id == user_id).first()
+            if not user:
+                return None
+
+            memberships = [
+                {
+                    "partition": m.partition_name,
+                    "role": m.role,
+                    "added_at": m.added_at.isoformat(),
+                }
+                for m in user.memberships
+            ]
+
+            return {
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+                "is_admin": user.is_admin,
+                "memberships": memberships,
+            }
+
+    def delete_user(self, user_id: int) -> bool:
+        with self.Session() as s:
+            user = s.query(User).filter(User.id == user_id).first()
+            if not user:
+                return False
+            s.delete(user)
+            s.commit()
+            return True
+
+    def regenerate_user_token(self, user_id: int) -> dict:
+        with self.Session() as s:
+            user = s.query(User).filter(User.id == user_id).first()
+            new_token = f"or-{secrets.token_hex(16)}"
+            user.token = new_token
+            s.commit()
+            s.refresh(user)
+
+            return {
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+                "token": user.token,
+                "is_admin": user.is_admin,
+            }
 
     # Memberships
-    def add_member(self, partition: str, user_id: int, role: str) -> bool:
+    def list_partition_members(self, partition: str) -> list[dict]:
+        with self.Session() as s:
+            if not s.query(Partition).filter(Partition.partition == partition).first():
+                self.logger.warning(f"Partition '{partition}' does not exist.")
+                return []
+            ms = s.query(PartitionMembership).filter_by(partition_name=partition).all()
+            return [
+                {
+                    "user_id": m.user_id,
+                    "role": m.role,
+                    "added_at": m.added_at.isoformat(),
+                }
+                for m in ms
+            ]
+
+    def add_partition_member(self, partition: str, user_id: int, role: str) -> bool:
         with self.Session() as s:
             if not s.query(Partition).filter(Partition.partition == partition).first():
                 s.add(Partition(partition=partition))
@@ -388,7 +476,7 @@ class PartitionFileManager:
                 .first()
             )
             if m:
-                m.role = role  # upgrade/downgrade role
+                m.role = role
             else:
                 s.add(
                     PartitionMembership(
@@ -398,7 +486,7 @@ class PartitionFileManager:
             s.commit()
             return True
 
-    def remove_member(self, partition: str, user_id: int) -> bool:
+    def remove_partition_member(self, partition: str, user_id: int) -> bool:
         with self.Session() as s:
             m = (
                 s.query(PartitionMembership)
@@ -411,27 +499,67 @@ class PartitionFileManager:
             s.commit()
             return True
 
-    def list_partition_members(self, partition: str):
+    def update_partition_member_role(
+        self, partition: str, user_id: int, new_role: str
+    ) -> bool:
         with self.Session() as s:
-            ms = s.query(PartitionMembership).filter_by(partition_name=partition).all()
-            return [
-                {
-                    "user_id": m.user_id,
-                    "role": m.role,
-                    "added_at": m.added_at.isoformat(),
-                }
-                for m in ms
-            ]
-
-    def list_user_partitions(self, user_id: int):
-        with self.Session() as s:
-            ms = s.query(PartitionMembership).filter_by(user_id=user_id).all()
-            return [{"partition": m.partition_name, "role": m.role} for m in ms]
-
-    def user_can_access(self, partition: str, user_id: int) -> bool:
-        with self.Session() as s:
-            return s.query(
+            m = (
                 s.query(PartitionMembership)
                 .filter_by(partition_name=partition, user_id=user_id)
-                .exists()
-            ).scalar()
+                .first()
+            )
+            if not m:
+                return False
+            m.role = new_role
+            s.commit()
+            return True
+
+    def create_partition(self, partition: str, user_id: int):
+        with self.Session() as s:
+            if s.query(Partition).filter(Partition.partition == partition).first():
+                self.logger.warning(f"Partition '{partition}' already exists.")
+                return
+            p = Partition(partition=partition)
+            s.add(p)
+            # Add creator as owner
+            m = PartitionMembership(
+                partition_name=partition, user_id=user_id, role="owner"
+            )
+            s.add(m)
+            s.commit()
+            self.logger.info(f"Partition '{partition}' created by user_id {user_id}.")
+
+    def list_user_partitions(self, user_id: int):
+        """Return full partition objects (to_dict) with role for a given user."""
+        with self.Session() as s:
+            # Join Partition and PartitionMembership
+            results = (
+                s.query(Partition, PartitionMembership.role)
+                .join(
+                    PartitionMembership,
+                    Partition.partition == PartitionMembership.partition_name,
+                )
+                .filter(PartitionMembership.user_id == user_id)
+                .all()
+            )
+
+            partitions = []
+            for partition_obj, role in results:
+                d = partition_obj.to_dict()
+                d["role"] = role
+                partitions.append(d)
+
+            return partitions
+
+    def user_exists(self, user_id: int) -> bool:
+        with self.Session() as s:
+            return s.query(User).filter(User.id == user_id).first() is not None
+
+    def user_is_partition_member(self, user_id: int, partition: str) -> bool:
+        with self.Session() as s:
+            return (
+                s.query(PartitionMembership)
+                .filter_by(user_id=user_id, partition_name=partition)
+                .first()
+                is not None
+            )
