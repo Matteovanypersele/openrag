@@ -62,6 +62,7 @@ services:
     profiles:
       - ''
     depends_on:
+    - rdb
     - milvus
     - vllm-gpu
 
@@ -72,6 +73,7 @@ services:
     profiles:
       - 'cpu'
     depends_on:
+    - rdb
     - milvus
     - vllm-cpu
 
