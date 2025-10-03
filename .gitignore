@@ -1,5 +1,6 @@
 # Ignore environment files
 .env
+node_modules
 
 # generate files and folders
 .files/
@@ -64,7 +65,6 @@ services/
 services/*
 !services/.gitkeep # Keep the placeholder
 
-*.json
 *.csv
 *.pkl
 
