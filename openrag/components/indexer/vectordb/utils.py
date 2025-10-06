@@ -1,3 +1,4 @@
+import hashlib
 import os
 import secrets
 from datetime import datetime
@@ -162,13 +163,14 @@ class PartitionFileManager:
     def _ensure_admin_user(self, admin_token: str):
         if not admin_token:
             return
+        hashed_token = self.hash_token(admin_token)
         with self.Session() as s:
-            admin = s.query(User).filter_by(token=admin_token).first()
+            admin = s.query(User).filter_by(token=hashed_token).first()
             if not admin:
                 admin = User(
                     email="admin@example.com",
                     display_name="Admin",
-                    token=admin_token,
+                    token=hashed_token,
                     is_admin=True,
                 )
                 s.add(admin)
@@ -344,12 +346,13 @@ class PartitionFileManager:
         """Create a user and generate an API token for them."""
         with self.Session() as s:
             token = f"or-{secrets.token_hex(16)}"
+            hashed_token = self.hash_token(token)
 
             user = User(
                 email=email,
                 display_name=display_name,
                 external_ref=external_ref,
-                token=token,
+                token=hashed_token,
                 is_admin=is_admin,
             )
             s.add(user)
@@ -360,7 +363,7 @@ class PartitionFileManager:
                 "id": user.id,
                 "email": user.email,
                 "display_name": user.display_name,
-                "token": user.token,
+                "token": token,
                 "is_admin": user.is_admin,
             }
 
@@ -381,7 +384,8 @@ class PartitionFileManager:
 
     def get_user_by_token(self, token: str) -> Optional[dict]:
         with self.Session() as s:
-            user = s.query(User).filter(User.token == token).first()
+            hashed_token = self.hash_token(token)
+            user = s.query(User).filter(User.token == hashed_token).first()
             if not user:
                 return None
 
@@ -563,3 +567,7 @@ class PartitionFileManager:
                 .first()
                 is not None
             )
+
+    def hash_token(self, token: str) -> str:
+        """Return a SHA-256 hash of a token string."""
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
