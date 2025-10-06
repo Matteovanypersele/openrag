@@ -130,10 +130,15 @@ class Indexer:
             await task_state_manager.set_state.remote(task_id, "CHUNKING")
             chunks = await self.handle.chunk.remote(doc, str(path), task_id)
 
-            if self.enable_insertion and chunks:
-                await task_state_manager.set_state.remote(task_id, "INSERTING")
-                await self.handle.insert_documents.remote(chunks)
-                log.info(f"Document {path} indexed successfully")
+            if self.enable_insertion:
+                if chunks:
+                    await task_state_manager.set_state.remote(task_id, "INSERTING")
+                    await self.handle.insert_documents.remote(chunks)
+                    log.info(f"Document {path} indexed successfully")
+                else:
+                    log.debug(
+                        "No chunks to insert !!! Potentially the uploaded file is empty"
+                    )
             else:
                 log.info(
                     f"Vectordb insertion skipped (enable_insertion={self.enable_insertion})."
