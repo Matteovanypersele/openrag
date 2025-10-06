@@ -442,7 +442,8 @@ class PartitionFileManager:
         with self.Session() as s:
             user = s.query(User).filter(User.id == user_id).first()
             new_token = f"or-{secrets.token_hex(16)}"
-            user.token = new_token
+            hashed_token = self.hash_token(new_token)
+            user.token = hashed_token
             s.commit()
             s.refresh(user)
 
@@ -450,7 +451,7 @@ class PartitionFileManager:
                 "id": user.id,
                 "email": user.email,
                 "display_name": user.display_name,
-                "token": user.token,
+                "token": new_token,
                 "is_admin": user.is_admin,
             }
 
