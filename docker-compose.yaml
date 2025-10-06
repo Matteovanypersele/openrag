@@ -69,6 +69,8 @@ services:
     profiles:
       - ''
     depends_on:
+      rdb:
+        condition: service_started
       milvus:
         condition: service_healthy
       vllm-gpu:
@@ -81,6 +83,8 @@ services:
     profiles:
       - 'cpu'
     depends_on:
+      rdb:
+        condition: service_started
       milvus:
         condition: service_healthy
       vllm-cpu:
