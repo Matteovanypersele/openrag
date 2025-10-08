@@ -23,7 +23,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from routers.actors import router as actors_router
 from routers.extract import router as extract_router
@@ -67,15 +66,7 @@ INDEXERUI_URL: Optional[str] = os.getenv("INDEXERUI_URL", None)
 INDEXERUI_COMPOSE_FILE = os.getenv("INDEXERUI_COMPOSE_FILE", None)
 INDEXERUI_PORT: Optional[str] = os.getenv("INDEXERUI_PORT", "3042")
 
-DISABLE_EXCEPTION_HANDLER: bool = (
-    os.getenv("DISABLE_EXCEPTION_HANDLER", "false").lower() == "true"
-)
-
-security = HTTPBearer()
-
-
 app = FastAPI()
-bearer_scheme = HTTPBearer()
 
 
 def custom_openapi():
@@ -132,12 +123,11 @@ app.add_middleware(AuthMiddleware)
 
 
 # Exception handlers
-if not DISABLE_EXCEPTION_HANDLER:
-
-    @app.exception_handler(OpenRAGError)
-    async def openrag_exception_handler(request: Request, exc: OpenRAGError):
-        logger.error("OpenRAGError occurred", error=str(exc))
-        return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
+@app.exception_handler(OpenRAGError)
+async def openrag_exception_handler(request: Request, exc: OpenRAGError):
+    logger = get_logger()
+    logger.error("OpenRAGError occurred", error=str(exc))
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
 # Add CORS middleware

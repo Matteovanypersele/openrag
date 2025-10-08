@@ -37,8 +37,6 @@ RAY_SERVE_PORT=8080                  # Port for Ray Serve HTTP proxy
 
 When using Ray Serve with a **remote cluster**, the HTTP server will be started on the **head node** of the cluster.
 
-> [!IMPORTANT]
-> When using Ray Serve, you must disable the **FastAPI `exception handler`** by setting `DISABLE_EXCEPTION_HANDLER=true` in your environment variables. Ray Serve is currently incompatible with FastAPI's exception handling middleware. Additionally, the Chainlit UI is disabled when using Ray Serve deployment.
 
 ## 🚀 API Endpoints
 ### ℹ️ System Health
