@@ -8,6 +8,7 @@ from config import load_config
 from fastapi import (
     APIRouter,
     Depends,
+    Form,
     HTTPException,
     Request,
     Response,
@@ -254,6 +255,33 @@ async def patch_file(
         status_code=status.HTTP_200_OK,
         content={"message": f"Metadata for file '{file_id}' successfully updated."},
     )
+
+
+@router.post("/partition/{partition}/file/{file_id}/copy")
+async def copy_file_between_partitions(
+    partition: str,
+    file_id: str = Depends(validate_file_id),
+    metadata: Optional[Any] = Depends(validate_metadata),
+    source_partition: str = Form(...),
+    source_file_id: str = Form(...),
+    indexer=Depends(get_indexer),
+    user=Depends(require_partition_editor),
+    user_partitions=Depends(current_user_partitions),
+):
+    # Make sure user has access to destination partition
+    await ensure_partition_role(
+        partition=source_partition,
+        user=user,
+        user_partitions=user_partitions,
+        required_role="viewer",
+    )
+    metadata["file_id"] = file_id
+    metadata["partition"] = partition
+
+    await indexer.copy_file.remote(
+        file_id=source_file_id, metadata=metadata, partition=source_partition, user=user
+    )
+    return JSONResponse(status_code=status.HTTP_201_CREATED)
 
 
 @router.get("/task/{task_id}")

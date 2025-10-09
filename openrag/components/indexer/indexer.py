@@ -217,6 +217,40 @@ class Indexer:
             log.exception("Error in update_file_metadata", error=str(e))
             raise
 
+    @ray.method(concurrency_group="update")
+    async def copy_file(
+        self,
+        file_id: str,
+        metadata: Dict,
+        partition: str,
+        user: Optional[Dict] = None,
+    ):
+        log = self.logger.bind(file_id=file_id, partition=partition)
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
+        if not self.enable_insertion:
+            log.error(
+                "Vector database is not enabled, but update_file_metadata was called."
+            )
+            return
+
+        try:
+            docs = await vectordb.get_file_chunks.remote(file_id, partition)
+            for doc in docs:
+                doc.metadata.update(metadata)
+
+            await vectordb.async_add_documents.remote(docs, user=user)
+
+            log.info(
+                "File copy completed",
+                file_id=file_id,
+                partition=partition,
+                new_file_id=metadata.get("file_id"),
+                new_partition=metadata.get("partition"),
+            )
+        except Exception as e:
+            log.exception("Error in copy_file", error=str(e))
+            raise
+
     @ray.method(concurrency_group="search")
     async def asearch(
         self,
