@@ -120,6 +120,13 @@ For more details, [see this file](docs/features_in_details.md)
 * **Enhanced Security**: Ensures data encryption both during transit and at rest.
 
 ## 🚀 Installation
+For comprehensive documentation and troubleshooting guidance, visit our [documentation site](https://linagora.github.io/openrag/).
+
+To run the documentation site locally for development:
+```bash
+npm i     # Install dependencies (it's like `uv init`)
+npm run dev   # Start the development server (like `uv run`)
+```
 
 ### Prerequisites
 - **Python 3.12** or higher recommended

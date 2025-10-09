@@ -1,4 +1,6 @@
-# Deploying OpenRAG on Kubernetes
+---
+title: Deploying OpenRAG on Kubernetes
+---
 
 This guide explains how to deploy the **OpenRAG** stack on a Kubernetes cluster using Helm.
 
@@ -19,7 +21,7 @@ This guide explains how to deploy the **OpenRAG** stack on a Kubernetes cluster 
 
    - Copy or create a new `values.yaml` at the root of your repo.
    - You can see the full example file inside the chart:
-     [../charts/openrag-stack/values.yaml](../charts/openrag-stack/values.yaml)
+     [../charts/openrag-stack/values.yaml](/charts/openrag-stack/values.yaml)
    - Customize the values you need (e.g., image tags, resources, ingress host, storage class, environment variables, secrets).
 
 2. **Set environment and secrets**:
@@ -30,7 +32,10 @@ This guide explains how to deploy the **OpenRAG** stack on a Kubernetes cluster 
 3. **Install or upgrade the release from GHCR**:
 
    ```bash
-   helm upgrade --install openrag oci://ghcr.io/linagora/openrag-stack -f ./values.yaml --version 0.1.0
+   helm upgrade\
+      --install openrag oci://ghcr.io/linagora/openrag-stack\
+      -f ./values.yaml\
+      --version 0.1.0
    ```
 
    - `openrag` is the Helm release name.

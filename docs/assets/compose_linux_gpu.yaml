@@ -2,21 +2,20 @@ include:
   - vdb/milvus.yaml
   - ${CHAINLIT_DATALAYER_COMPOSE:-extern/dummy.yaml}
   - extern/infinity.yaml
-  # - ${INDEXERUI_COMPOSE_FILE:-extern/indexer-ui/docker-compose.yaml}
+  - ${INDEXERUI_COMPOSE_FILE:-extern/indexer-ui/docker-compose.yaml}
 
 x-openrag: &openrag_template
   image: ghcr.io/linagora/openrag:dev-latest
-  # image: linagoraai/openrag:latest
   build:
     context: .
     dockerfile: Dockerfile
   volumes:
-    - ${CONFIG_VOLUME:-./.hydra_config}:/app/.hydra_config # For dev mode
+    - ${CONFIG_VOLUME:-./.hydra_config}:/app/.hydra_config
     - ${DATA_VOLUME:-./data}:/app/data
     - ${MODEL_WEIGHTS_VOLUME:-~/.cache/huggingface}:/app/model_weights # Model weights for RAG
     - ./openrag:/app/openrag # For dev mode
     - /$SHARED_ENV:/ray_mount/.env # Shared environment variables
-    - ./logs:/app/logs # For dev mode
+    - ./ray_mount/logs:/app/logs
   ports:
     - ${APP_PORT:-8080}:${APP_iPORT:-8080}
     - ${RAY_DASHBOARD_PORT:-8265}:8265 # Disable when in cluster mode
@@ -33,7 +32,7 @@ x-vllm: &vllm_template
     default:
       aliases:
         - vllm
-  restart: on-failure
+  restart: always
   environment:
     - HUGGING_FACE_HUB_TOKEN
   ipc: "host"
@@ -44,32 +43,19 @@ x-vllm: &vllm_template
     --trust-remote-code
     --task embed
     --gpu_memory_utilization 0.3
-    --max-model-len ${MAX_MODEL_LEN:-16384}
-  # --max-num-seqs 1
+    --max-num-seqs 1
+  # --max-model-len ${MOX_MODEL_LEN:-2048}
   # gpu_memory_utilization, max-num-seqs et max-model-len can be tuned depending on your GPU memory
-
+  
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-    interval: 20s
+    interval: 15s
     timeout: 5s
-    retries: 4
-    start_period: 90s
-  # ports:
-  #   - ${VLLM_PORT:-8000}:8000
+    retries: 3
+    start_period: 60s
+  ports:
+    - ${VLLM_PORT:-8000}:8000
 services:
-  # OpenRAG Indexer UI
-  indexer-ui:
-    image: linagoraai/indexer-ui:v1.1
-    build:
-      context: ./extern/indexer-ui
-      dockerfile: Dockerfile
-    environment:
-      - API_BASE_URL=${API_BASE_URL:-http://localhost:${APP_PORT:-8080}}
-      - INCLUDE_CREDENTIALS=${INCLUDE_CREDENTIALS:-false}
-    ports:
-      - "${INDEXERUI_PORT:-3042}:3000"
-    restart: unless-stopped
-
   # GPU - default 
   openrag:
     <<: *openrag_template
@@ -83,8 +69,6 @@ services:
     profiles:
       - ''
     depends_on:
-      rdb:
-        condition: service_started
       milvus:
         condition: service_healthy
       vllm-gpu:
@@ -97,8 +81,6 @@ services:
     profiles:
       - 'cpu'
     depends_on:
-      rdb:
-        condition: service_started
       milvus:
         condition: service_healthy
       vllm-cpu:
@@ -134,18 +116,5 @@ services:
       target: vllm-openai
     image: openrag-vllm-openai-cpu
     deploy: {}
-    environment:
-      - VLLM_CPU_KVCACHE_SPACE=8
-    # Default value isn't sufficient for full context length
-    command: >
-      --model ${EMBEDDER_MODEL_NAME:-jinaai/jina-embeddings-v3}
-      --trust-remote-code
-      --dtype float32
-      --max-model-len ${MAX_MODEL_LEN:-16384}
-    #  --max-num-batched-tokens 32768
-    # dtype is required for aarch64 (https://github.com/vllm-project/vllm/issues/11327) and improves speed on amd64.
-    # max-num-batched-tokens is required for aarch64 because chunked prefill isn't supported by V1 vllm backend
-    # for aarch64 yet. On aarch64 max-num-batched-tokens must be equal max-model-len for now (without chunked prefill).
-    # For details see https://github.com/vllm-project/vllm/issues/21179
     profiles:
       - 'cpu'
