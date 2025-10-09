@@ -116,7 +116,7 @@ services:
     deploy: {}
     environment:
       - VLLM_CPU_KVCACHE_SPACE=8
-      #- VLLM_USE_V1=0 # for ibm-granite/granite-embedding-small-english-r2
+      - VLLM_USE_V1=0 # for ibm-granite/granite-embedding-small-english-r2
     # Default value isn't sufficient for full context length
     command: >
       --model ${EMBEDDER_MODEL_NAME:-jinaai/jina-embeddings-v3}
