@@ -1,14 +1,15 @@
-# FastAPI RAG Backend API Documentation
+---
+title: 🌟 API Documentation Overview
+description: Use the FastAPI RAG Backend API for document-based question answering.
+---
 
-## 🌟 Overview
-
-This FastAPI-powered backend provides a comprehensive document-based question answering system using Retrieval-Augmented Generation (RAG). The API supports semantic search, document indexing, and chat completions across multiple data partitions with full OpenAI compatibility.
+The FastAPI-powered backend provides a comprehensive document-based question answering system using Retrieval-Augmented Generation (RAG). The API supports semantic search, document indexing, and chat completions across multiple data partitions with full OpenAI compatibility.
 
 ## 🔐 Authentication
 
-All endpoints require authentication when **enabled** (by addting a authorization token `AUTH_TOKEN` in your **`.env`**). Include your **`AUTH_TOKEN`** in the HTTP request header:
+All endpoints require authentication when **enabled** (by adding a authorization token `AUTH_TOKEN` in your **`.env`**). Include your **`AUTH_TOKEN`** in the HTTP request header:
 
-```
+```http
 Authorization: Bearer YOUR_AUTH_TOKEN
 ```
 
@@ -23,13 +24,15 @@ By default, the backend uses `uvicorn` to serve the FastAPI app.
 
 To enable **Ray Serve**, set the following environment variable:
 
-```
+```bash
+// .env
 ENABLE_RAY_SERVE=true
 ```
 
 Additional optional environment variables for configuring Ray Serve:
 
-```
+```bash
+// .env
 RAY_SERVE_NUM_REPLICAS=1             # Number of deployment replicas
 RAY_SERVE_HOST=0.0.0.0               # Host address for Ray Serve HTTP proxy
 RAY_SERVE_PORT=8080                  # Port for Ray Serve HTTP proxy
@@ -203,19 +206,21 @@ POST /v1/chat/completions
 OpenAI-compatible chat completion using **`RAG` pipeline**.
 
 **Request Body:**
-```json
-{
-  "model": "openrag-{partition_name}",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Your question here"
-    }
-  ],
-  "temperature": 0.7,
-  "stream": 0.3,
-  ...
-}
+```bash frame="none" title="Testing the openai OpenRAG chat completions endpoint with curl"
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
+  -d '{
+    "model": "openrag-{partition_name}",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Your question here"
+      }
+    ],
+    "temperature": 0.7,
+    "stream": false
+  }'
 ```
 
 * Text Completions
@@ -233,17 +238,13 @@ For indexing multiple files programmatically, you can use this script [`data_ind
 
 ### OpenAI Client Integration
 
-For detailed examples of using OpenAI clients with this API, see the [`openai_compatibility_guide.ipynb`](./utility/openai_compatibility_guide.ipynb) notebook in the [`📁 utility`](./utility/) folder or simply using **`IndexerUI`**.
-
-#### Example OpenAI Client Usage
-
-```python
+```python {9-10}
 from openai import OpenAI, AsyncOpenAI
 
-api_base_url = "http://localhost:8080" # fastapi base url 
+api_base_url = "http://localhost:8080" # fastapi base url of 'openrag'
 base_url = f"{api_base_url}/v1"
 
-auth_key = 'sk-1234' # your api authentification key, AUTH_TOKEN in your .env
+auth_key = ... # your api authentification key AUTH_TOKEN in your .env. Is authentification is disabled, use a placeholder like 'sk-1234'
 client = OpenAI(api_key=auth_key, base_url=base_url)
 
 your_partition= 'my_partition' # name of your partition
@@ -253,7 +254,6 @@ settings = {
     'temperature': 0.3,
     'stream': False
 }
-
 
 response = client.chat.completions.create(
     **settings,

@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import numpy as np
 import ray
+from config import load_config
 from langchain_core.documents.base import Document
 from pymilvus import (
     AnnSearchRequest,
@@ -23,6 +24,7 @@ from ..embeddings import OpenAIEmbedding
 from .utils import PartitionFileManager
 
 logger = get_logger()
+config = load_config()
 
 
 class BaseVectorDB(ABC):
@@ -949,9 +951,6 @@ class ConnectorFactory:
 
     @staticmethod
     def get_vectordb_cls():
-        from config import load_config
-
-        config = load_config()
         name = config.vectordb.get("connector_name")
         vdb_cls = ConnectorFactory.CONNECTORS.get(name)
         if not vdb_cls:

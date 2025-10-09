@@ -1,3 +1,7 @@
+---
+title: Indexer UI
+---
+
 ## Configuring the Indexer UI
 
 ### 1. Download the `indexer-ui` Submodule
@@ -9,20 +13,21 @@ cd <project-name> # openrag project
 git submodule update --init --recursive
 ```
 
-> \[!Note]
-> The `--init --recursive` flags will:
->
-> * Initialize all submodules defined in the `.gitmodules` file
-> * Clone the content of each submodule
-> * Recursively initialize and update nested submodules
+:::note
+The `--init --recursive` flags will:
 
-> [!IMPORTANT]
-> Each version of **`openrag`** ships with a specific compatible commit of [indexer-ui](https://github.com/linagora/openrag-admin-ui). The above command is sufficient.
-> In development mode, to fetch the latest version of `indexer-ui`, run:
+* Initialize all submodules defined in the `.gitmodules` file
+* Clone the content of each submodule
+* Recursively initialize and update nested submodules
+:::
 
-```bash
+:::caution[Important]
+Each version of **`openrag`** ships with a specific compatible commit of [indexer-ui](https://github.com/linagora/openrag-admin-ui). The above command is sufficient.
+In development mode, to fetch the latest version of `indexer-ui`, run:
+```bash title="fetching the latest version of submodules..."
 git submodule foreach 'git checkout main && git pull'
 ```
+:::
 
 ### 2. Set Environment Variables
 
@@ -34,6 +39,7 @@ To enable the Indexer UI, add the following environment variables to your config
 * Set the **base URL of your FastAPI backend** (used by the frontend). Replace **`APP_PORT`** accordingly
 
 ```bash
+// .env
 INDEXERUI_COMPOSE_FILE=extern/indexer-ui/docker-compose.yaml  # Path to the docker-compose file
 VITE_INCLUDE_CREDENTIALS=false # Set to true if FastAPI authentication is enabled
 INDEXERUI_PORT=8060 # Port for the Indexer UI (default: 3042)

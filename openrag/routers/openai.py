@@ -208,6 +208,7 @@ async def openai_completion(
     request2: Request,
     request: OpenAICompletionRequest,
     _: None = Depends(check_llm_model_availability),
+    user=Depends(current_user),
     user_partitions=Depends(current_user_or_admin_partitions_list),
 ):
     model_name = request.model
@@ -228,7 +229,9 @@ async def openai_completion(
         )
 
     try:
-        partitions = await get_partition_name(model_name, user_partitions)
+        partitions = await get_partition_name(
+            model_name, user_partitions, is_admin=user["is_admin"]
+        )
 
     except Exception as e:
         log.warning(f"Invalid model or partition: {e}")

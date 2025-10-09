@@ -52,8 +52,8 @@ reranker:
   top_k: ${oc.decode:${oc.env:RERANKER_TOP_K, 5}} # Number of documents to return after reranking. upgrade to 8 for better results if your llm has a wider context window
   base_url: ${oc.env:RERANKER_BASE_URL, http://reranker:${oc.env:RERANKER_PORT, 7997}}
 
-grader:
-  enable: false
+map_reduce:
+  map_reduce_n_docs: ${oc.decode:${oc.env:MAP_REDUCE_N_DOCS, 10}} # Number of documents to use in map-reduce
 
 verbose:
   verbose: true
