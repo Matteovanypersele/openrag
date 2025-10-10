@@ -17,5 +17,5 @@ python3 utility/data_indexer.py \
 
 docker logs openrag-openrag-cpu-1
 
-.github/workflows/mini/wait_for_tasks_completed.sh openrag-openrag-cpu-1 8080 500
+.github/workflows/smoke_test/wait_for_tasks_completed.sh openrag-openrag-cpu-1 8080 500
 
