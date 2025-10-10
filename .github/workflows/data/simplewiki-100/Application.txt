@@ -1,2 +1,0 @@
-The word application has several uses.
-&lt;templatestyles src="Dmbox/styles.css" /&gt;
