@@ -71,7 +71,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Create development release (nightly only)
-        if: github.event_name == 'schedule'
+        #if: github.event_name == 'schedule'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.dev_version.outputs.version }}
