@@ -104,7 +104,7 @@ jobs:
 
   cleanup-old-dev-releases:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    #if: github.event_name == 'schedule'
     needs: [build-and-push-dev-image]
     permissions:
       contents: write
@@ -207,7 +207,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Create development release (nightly only)
-        if: github.event_name == 'schedule'
+        #if: github.event_name == 'schedule'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.dev_version.outputs.version }}
