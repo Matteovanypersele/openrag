@@ -1,6 +1,6 @@
 include:
   - vdb/milvus.yaml
-#  - extern/infinity.yaml
+  - extern/infinity.yaml
 
 x-openrag: &openrag_template
   #image: ghcr.io/linagora/openrag:dev-latest
