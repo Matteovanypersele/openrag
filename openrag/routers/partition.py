@@ -1,7 +1,7 @@
 from typing import Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_vectordb
 from utils.logger import get_logger
@@ -167,8 +167,8 @@ async def list_partition_users(
 @router.post("/{partition}/users")
 async def add_partition_user(
     partition: str,
-    user_id: int,
-    role: RoleType = Query(default="viewer"),
+    user_id: int = Form(...),
+    role: RoleType = Form("viewer"),
     vectordb=Depends(get_vectordb),
     partition_owner=Depends(require_partition_owner),
 ):
@@ -207,7 +207,7 @@ async def remove_partition_user(
 async def update_partition_user_role(
     partition: str,
     user_id: int,
-    role: RoleType,
+    role: RoleType = Form(...),
     vectordb=Depends(get_vectordb),
     partition_owner=Depends(require_partition_owner),
 ):

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Request, Response, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Form, Request, Response, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_vectordb
 from utils.logger import get_logger
@@ -25,9 +27,9 @@ async def get_current_user(request: Request):
 
 @router.post("/")
 async def create_user(
-    display_name: str | None = None,
-    external_user_id: str | None = None,
-    is_admin: bool = False,
+    display_name: Optional[str] = Form(None),
+    external_user_id: Optional[str] = Form(None),
+    is_admin: bool = Form(False),
     vectordb=Depends(get_vectordb),
     admin_user=Depends(require_admin),
 ):
