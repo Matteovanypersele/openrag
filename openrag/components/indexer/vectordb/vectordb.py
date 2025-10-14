@@ -834,6 +834,7 @@ class MilvusDB(BaseVectorDB):
         user_partitions = [
             p["partition"]
             for p in self.partition_file_manager.list_user_partitions(user_id)
+            if p["role"] == "owner"
         ]
         for partition in user_partitions:
             self.partition_file_manager.delete_partition(partition)
