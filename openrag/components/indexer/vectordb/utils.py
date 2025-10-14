@@ -149,8 +149,7 @@ class PartitionFileManager:
             self.logger = logger
             self.Session = sessionmaker(bind=self.engine)
             AUTH_TOKEN = os.getenv("AUTH_TOKEN")
-            if AUTH_TOKEN:
-                self._ensure_admin_user(AUTH_TOKEN)
+            self._ensure_admin_user(AUTH_TOKEN)
 
         except Exception as e:
             raise VDBConnectionError(
@@ -161,10 +160,10 @@ class PartitionFileManager:
 
     def _ensure_admin_user(self, admin_token: str):
         if not admin_token:
-            return
+            admin_token = f"or-{secrets.token_hex(16)}"
         hashed_token = self.hash_token(admin_token)
         with self.Session() as s:
-            admin = s.query(User).filter_by(token=hashed_token).first()
+            admin = s.query(User).filter_by(id=1).first()
             if not admin:
                 admin = User(
                     display_name="Admin",
@@ -173,13 +172,11 @@ class PartitionFileManager:
                 )
                 s.add(admin)
                 s.commit()
-                self.logger.info("Created admin user with global AUTH_TOKEN")
+                self.logger.info("Created admin user")
             elif not admin.is_admin:
                 admin.is_admin = True
                 s.commit()
-                self.logger.info(
-                    "Upgraded existing user to admin with global AUTH_TOKEN"
-                )
+                self.logger.info("Upgraded existing user to admin")
 
     def list_partition_files(self, partition: str, limit: Optional[int] = None):
         """List files in a partition with optional limit - Optimized by querying File table directly"""
