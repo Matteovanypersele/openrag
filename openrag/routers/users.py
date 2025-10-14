@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_vectordb
 from utils.logger import get_logger
@@ -14,6 +14,13 @@ async def list_users(vectordb=Depends(get_vectordb), admin_user=Depends(require_
     users = await vectordb.list_users.remote()
     logger.debug("Returned list of users.", user_count=len(users))
     return JSONResponse(status_code=status.HTTP_200_OK, content={"users": users})
+
+
+@router.get("/info")
+async def get_current_user(request: Request):
+    """Get current authenticated user info"""
+    user = request.state.user
+    return user
 
 
 @router.post("/")
