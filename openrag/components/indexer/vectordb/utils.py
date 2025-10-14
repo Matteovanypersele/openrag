@@ -173,8 +173,9 @@ class PartitionFileManager:
                 s.add(admin)
                 s.commit()
                 self.logger.info("Created admin user")
-            elif not admin.is_admin:
+            else:
                 admin.is_admin = True
+                admin.token = hashed_token
                 s.commit()
                 self.logger.info("Upgraded existing user to admin")
 
