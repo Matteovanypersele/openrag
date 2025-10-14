@@ -99,12 +99,11 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    external_ref = Column(String, unique=True, nullable=True)
-    email = Column(String, unique=True, nullable=True, index=True)
+    external_user_id = Column(String, unique=True, nullable=True, index=True)
     display_name = Column(String, nullable=True)
     token = Column(String, unique=True, nullable=True, index=True)
     is_admin = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.now, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
 
     memberships = relationship(
         "PartitionMembership", back_populates="user", cascade="all, delete-orphan"
@@ -150,8 +149,7 @@ class PartitionFileManager:
             self.logger = logger
             self.Session = sessionmaker(bind=self.engine)
             AUTH_TOKEN = os.getenv("AUTH_TOKEN")
-            if AUTH_TOKEN:
-                self._ensure_admin_user(AUTH_TOKEN)
+            self._ensure_admin_user(AUTH_TOKEN)
 
         except Exception as e:
             raise VDBConnectionError(
@@ -162,26 +160,23 @@ class PartitionFileManager:
 
     def _ensure_admin_user(self, admin_token: str):
         if not admin_token:
-            return
+            admin_token = f"or-{secrets.token_hex(16)}"
         hashed_token = self.hash_token(admin_token)
         with self.Session() as s:
-            admin = s.query(User).filter_by(token=hashed_token).first()
+            admin = s.query(User).filter_by(id=1).first()
             if not admin:
                 admin = User(
-                    email="admin@example.com",
                     display_name="Admin",
                     token=hashed_token,
                     is_admin=True,
                 )
                 s.add(admin)
                 s.commit()
-                self.logger.info("Created admin user with global AUTH_TOKEN")
+                self.logger.info("Created admin user")
             elif not admin.is_admin:
                 admin.is_admin = True
                 s.commit()
-                self.logger.info(
-                    "Upgraded existing user to admin with global AUTH_TOKEN"
-                )
+                self.logger.info("Upgraded existing user to admin")
 
     def list_partition_files(self, partition: str, limit: Optional[int] = None):
         """List files in a partition with optional limit - Optimized by querying File table directly"""
@@ -338,9 +333,8 @@ class PartitionFileManager:
 
     def create_user(
         self,
-        email: Optional[str] = None,
         display_name: Optional[str] = None,
-        external_ref: Optional[str] = None,
+        external_user_id: Optional[str] = None,
         is_admin: bool = False,
     ) -> dict:
         """Create a user and generate an API token for them."""
@@ -349,9 +343,8 @@ class PartitionFileManager:
             hashed_token = self.hash_token(token)
 
             user = User(
-                email=email,
                 display_name=display_name,
-                external_ref=external_ref,
+                external_user_id=external_user_id,
                 token=hashed_token,
                 is_admin=is_admin,
             )
@@ -361,8 +354,8 @@ class PartitionFileManager:
 
             return {
                 "id": user.id,
-                "email": user.email,
                 "display_name": user.display_name,
+                "external_user_id": user.external_user_id,
                 "token": token,
                 "is_admin": user.is_admin,
             }
@@ -373,9 +366,8 @@ class PartitionFileManager:
             return [
                 {
                     "id": u.id,
-                    "email": u.email,
                     "display_name": u.display_name,
-                    "external_ref": u.external_ref,
+                    "external_user_id": u.external_user_id,
                     "is_admin": u.is_admin,
                     "created_at": u.created_at.isoformat(),
                 }
@@ -400,8 +392,8 @@ class PartitionFileManager:
 
             return {
                 "id": user.id,
-                "email": user.email,
                 "display_name": user.display_name,
+                "external_user_id": user.external_user_id,
                 "is_admin": user.is_admin,
                 "memberships": memberships,
             }
@@ -423,8 +415,8 @@ class PartitionFileManager:
 
             return {
                 "id": user.id,
-                "email": user.email,
                 "display_name": user.display_name,
+                "external_user_id": user.external_user_id,
                 "is_admin": user.is_admin,
                 "memberships": memberships,
             }
@@ -449,8 +441,8 @@ class PartitionFileManager:
 
             return {
                 "id": user.id,
-                "email": user.email,
                 "display_name": user.display_name,
+                "external_user_id": user.external_user_id,
                 "token": new_token,
                 "is_admin": user.is_admin,
             }

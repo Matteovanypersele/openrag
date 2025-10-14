@@ -98,6 +98,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Skip if no AUTH_TOKEN configured
         if AUTH_TOKEN is None:
+            user = await vectordb.get_user.remote(1)
+            user_partitions = await vectordb.list_user_partitions.remote(1)
+            request.state.user = user
+            request.state.user_partitions = user_partitions
             return await call_next(request)
 
         # routes to allow access to without token bearer

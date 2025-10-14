@@ -20,7 +20,6 @@ It covers admin behavior, user tokens, and partition-level permissions.
 When `AUTH_TOKEN` is set:
 1. On startup, the application checks whether an **admin user** already exists in the database.
 2. If not, it **creates one automatically**:
-   - `email`: `admin@example.com`
    - `display_name`: `"Admin"`
    - `is_admin`: `True`
    - `token`: SHA-256 hash of the `AUTH_TOKEN` value

@@ -816,13 +816,12 @@ class MilvusDB(BaseVectorDB):
 
     async def create_user(
         self,
-        email: str | None = None,
         display_name: str | None = None,
-        external_ref: str | None = None,
+        external_user_id: str | None = None,
         is_admin: bool = False,
     ):
         return self.partition_file_manager.create_user(
-            email, display_name, external_ref, is_admin
+            display_name, external_user_id, is_admin
         )
 
     async def get_user(self, user_id: int):
@@ -834,6 +833,7 @@ class MilvusDB(BaseVectorDB):
         user_partitions = [
             p["partition"]
             for p in self.partition_file_manager.list_user_partitions(user_id)
+            if p["role"] == "owner"
         ]
         for partition in user_partitions:
             self.partition_file_manager.delete_partition(partition)

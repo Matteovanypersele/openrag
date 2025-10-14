@@ -25,9 +25,8 @@ async def get_current_user(request: Request):
 
 @router.post("/")
 async def create_user(
-    email: str | None = None,
     display_name: str | None = None,
-    external_ref: str | None = None,
+    external_user_id: str | None = None,
     is_admin: bool = False,
     vectordb=Depends(get_vectordb),
     admin_user=Depends(require_admin),
@@ -36,9 +35,8 @@ async def create_user(
     Create a new user and generate a token.
     """
     user = await vectordb.create_user.remote(
-        email=email,
         display_name=display_name,
-        external_ref=external_ref,
+        external_user_id=external_user_id,
         is_admin=is_admin,
     )
     logger.info("Created new user", user_id=user["id"])

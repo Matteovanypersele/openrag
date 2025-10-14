@@ -139,9 +139,6 @@ async def require_partitions_viewer(
     user=Depends(current_user),
     user_partitions=Depends(current_user_partitions),
 ):
-    from utils.logger import get_logger
-
-    logger = get_logger()
     if SUPER_ADMIN_MODE and user.get("is_admin"):
         return user
     if isinstance(partitions, list) and len(partitions) == 1 and partitions[0] == "all":
@@ -284,7 +281,11 @@ async def get_partition_name(model_name, user_partitions, is_admin=False):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Partition `{partition}` not found for given model `{model_name}`",
         )
-    if partition != "all" and partition not in user_partitions:
+    if (
+        partition != "all"
+        and partition not in user_partitions
+        and not (is_admin and SUPER_ADMIN_MODE)
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Access to model `{model_name}` is forbidden for the current user",
