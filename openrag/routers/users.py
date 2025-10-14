@@ -19,7 +19,7 @@ async def list_users(vectordb=Depends(get_vectordb), admin_user=Depends(require_
 @router.post("/")
 async def create_user(
     display_name: str | None = None,
-    external_ref: str | None = None,
+    external_user_id: str | None = None,
     is_admin: bool = False,
     vectordb=Depends(get_vectordb),
     admin_user=Depends(require_admin),
@@ -29,7 +29,7 @@ async def create_user(
     """
     user = await vectordb.create_user.remote(
         display_name=display_name,
-        external_ref=external_ref,
+        external_user_id=external_user_id,
         is_admin=is_admin,
     )
     logger.info("Created new user", user_id=user["id"])

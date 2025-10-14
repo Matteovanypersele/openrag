@@ -99,7 +99,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    external_ref = Column(String, unique=True, nullable=True, index=True)
+    external_user_id = Column(String, unique=True, nullable=True, index=True)
     display_name = Column(String, nullable=True)
     token = Column(String, unique=True, nullable=True, index=True)
     is_admin = Column(Boolean, default=False, nullable=False)
@@ -337,7 +337,7 @@ class PartitionFileManager:
     def create_user(
         self,
         display_name: Optional[str] = None,
-        external_ref: Optional[str] = None,
+        external_user_id: Optional[str] = None,
         is_admin: bool = False,
     ) -> dict:
         """Create a user and generate an API token for them."""
@@ -347,7 +347,7 @@ class PartitionFileManager:
 
             user = User(
                 display_name=display_name,
-                external_ref=external_ref,
+                external_user_id=external_user_id,
                 token=hashed_token,
                 is_admin=is_admin,
             )
@@ -358,7 +358,7 @@ class PartitionFileManager:
             return {
                 "id": user.id,
                 "display_name": user.display_name,
-                "external_ref": user.external_ref,
+                "external_user_id": user.external_user_id,
                 "token": token,
                 "is_admin": user.is_admin,
             }
@@ -370,7 +370,7 @@ class PartitionFileManager:
                 {
                     "id": u.id,
                     "display_name": u.display_name,
-                    "external_ref": u.external_ref,
+                    "external_user_id": u.external_user_id,
                     "is_admin": u.is_admin,
                     "created_at": u.created_at.isoformat(),
                 }
@@ -396,7 +396,7 @@ class PartitionFileManager:
             return {
                 "id": user.id,
                 "display_name": user.display_name,
-                "external_ref": user.external_ref,
+                "external_user_id": user.external_user_id,
                 "is_admin": user.is_admin,
                 "memberships": memberships,
             }
@@ -419,7 +419,7 @@ class PartitionFileManager:
             return {
                 "id": user.id,
                 "display_name": user.display_name,
-                "external_ref": user.external_ref,
+                "external_user_id": user.external_user_id,
                 "is_admin": user.is_admin,
                 "memberships": memberships,
             }
@@ -445,7 +445,7 @@ class PartitionFileManager:
             return {
                 "id": user.id,
                 "display_name": user.display_name,
-                "external_ref": user.external_ref,
+                "external_user_id": user.external_user_id,
                 "token": new_token,
                 "is_admin": user.is_admin,
             }

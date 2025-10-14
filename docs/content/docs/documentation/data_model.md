@@ -14,7 +14,7 @@ Stores information about API users and administrators.
 | Column         | Type      | Description |
 |----------------|-----------|-------------|
 | `id`           | Integer (PK) | Unique user identifier |
-| `external_ref` | String (nullable, unique) | Optional external system reference |
+| `external_user_id` | String (nullable, unique) | Optional external system reference |
 | `display_name` | String | Display name |
 | `token`        | String (unique, hashed) | SHA-256 hash of the user’s API token |
 | `is_admin`     | Boolean | Marks system administrator users |
