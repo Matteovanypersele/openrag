@@ -58,7 +58,7 @@ x-vllm: &vllm_template
 services:
   # OpenRAG Indexer UI
   indexer-ui:
-    image: linagoraai/indexer-ui:v1.0.1
+    image: linagoraai/indexer-ui:v1.1
     build:
       context: ./extern/indexer-ui
       dockerfile: Dockerfile
