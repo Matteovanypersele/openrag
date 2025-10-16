@@ -700,10 +700,8 @@ class MilvusDB(BaseVectorDB):
         return self._client.has_collection(collection_name=collection_name)
 
     async def delete_partition(self, partition: str):
+        self._check_partition_exists(partition)
         log = self.logger.bind(partition=partition)
-        if not self.partition_file_manager.partition_exists(partition):
-            log.debug(f"Partition {partition} does not exist")
-            return False
 
         try:
             count = self._client.delete(
