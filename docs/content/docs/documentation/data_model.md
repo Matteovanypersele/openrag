@@ -27,6 +27,9 @@ Stores information about API users and administrators.
 
 ### 📁 `partitions`
 Represents a logical workspace or “space” that groups files and users.
+:::caution
+Note that "partition" has to be unique accross all app users as it is used as a partition key in Milvus.
+:::
 
 | Column       | Type | Description |
 |---------------|------|-------------|
