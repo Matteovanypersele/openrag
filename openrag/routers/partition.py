@@ -28,7 +28,7 @@ async def list_existant_partitions(
     vectordb=Depends(get_vectordb),
     partitions=Depends(partitions_with_details),
 ):
-    if partitions == ["all"]:
+    if len(partitions) == 1 and partitions[0]["partition"] == "all":
         partitions = await vectordb.list_partitions.remote()
     logger.debug(
         "Returned list of existing partitions.", partition_count=len(partitions)
