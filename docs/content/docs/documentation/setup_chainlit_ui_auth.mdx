@@ -1,0 +1,35 @@
+---
+title: Chainlit Authentication
+---
+
+import { Image } from 'astro:assets';
+import myImage from "../../../assets/Chainlit_Login.png";
+
+
+Chainlit's password-based authentication is now integrated with the [User Model](/documentation/data_model/#-users). When [API authentication](/documentation/api/#-authentication) is enabled, Chainlit authentication is also enabled. Disabling API authentication will disable Chainlit's password-based authentication as well.
+
+## How to authentication
+* Go to **`/chainlit`** and provide your credentials
+<Image src={myImage} alt="RAG Architecture" width={600} height={350} />
+
+:::note
+**Authentication credentials:**
+- **Password**: Your generated OpenRAG `API key` 
+- **Email**: Any non-empty value (required by Chainlit interface but not validated by the backend)
+
+The system only verifies the API key validity during authentication.
+:::
+
+
+## Optional Configuration
+When a user logs in, Chainlit generates a session token and signs it using the environment variable **`CHAINLIT_AUTH_SECRET`** (see the [Chainlit authentication documentation](https://docs.chainlit.io/authentication/overview) for details). Each time the user sends a request, the token's signature is validated.
+
+The `CHAINLIT_AUTH_SECRET` variable is required for authentication, and a default value (`default_secret_for_openrag_ui`) is set. For production environments, it is recommended to change this value by following these steps:
+
+* Generate a secret automatically using `chainlit create-secret` (or `uv run chainlit create-secret` if using uv), or set your own custom value.
+* Add the secret to your environment configuration:
+
+```bash
+# .env
+CHAINLIT_AUTH_SECRET=your_secret_value
+```

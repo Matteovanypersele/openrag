@@ -19,10 +19,10 @@ from typing import Optional
 
 import uvicorn
 from config import load_config
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from routers.actors import router as actors_router
 from routers.extract import router as extract_router
@@ -31,6 +31,9 @@ from routers.openai import router as openai_router
 from routers.partition import router as partition_router
 from routers.queue import router as queue_router
 from routers.search import router as search_router
+from routers.users import router as users_router
+from starlette.middleware.base import BaseHTTPMiddleware
+from utils.dependencies import vectordb
 from utils.exceptions import OpenRAGError
 from utils.logger import get_logger
 
@@ -48,6 +51,7 @@ class Tags(Enum):
     PARTITION = ("Partitions & files",)
     QUEUE = ("Queue management",)
     ACTORS = ("Ray Actors",)
+    USERS = ("User management",)
 
 
 class AppState:
@@ -62,37 +66,93 @@ AUTH_TOKEN: Optional[str] = os.getenv("AUTH_TOKEN")
 INDEXERUI_URL: Optional[str] = os.getenv("INDEXERUI_URL", None)
 INDEXERUI_COMPOSE_FILE = os.getenv("INDEXERUI_COMPOSE_FILE", None)
 INDEXERUI_PORT: Optional[str] = os.getenv("INDEXERUI_PORT", "3042")
-
-DISABLE_EXCEPTION_HANDLER: bool = (
-    os.getenv("DISABLE_EXCEPTION_HANDLER", "false").lower() == "true"
+WITH_CHAINLIT_UI: Optional[bool] = (
+    os.getenv("WITH_CHAINLIT_UI", "true").lower() == "true"
 )
+WITH_OPENAI_API: Optional[bool] = os.getenv("WITH_OPENAI_API", "true").lower() == "true"
 
-security = HTTPBearer()
-
-
-# Dependency to verify token
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    if AUTH_TOKEN is None:
-        return  # Auth disabled
-    if token != AUTH_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or missing token"
-        )
+app = FastAPI()
 
 
-# Apply globally only if AUTH_TOKEN is set
-dependencies = [Depends(verify_token)] if AUTH_TOKEN else []
-app = FastAPI(dependencies=dependencies)
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Openrag API",
+        version="1.0.0",
+        routes=app.routes,
+    )
+    # Add global security
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {"type": "http", "scheme": "bearer"}
+    }
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Skip if no AUTH_TOKEN configured
+        if AUTH_TOKEN is None:
+            user = await vectordb.get_user.remote(1)
+            user_partitions = await vectordb.list_user_partitions.remote(1)
+            request.state.user = user
+            request.state.user_partitions = user_partitions
+            return await call_next(request)
+
+        # routes to allow access to without token bearer
+        if request.url.path in [
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+        ] or request.url.path.startswith("/chainlit"):  # Allow all chainlit subroutes
+            return await call_next(request)
+
+        # Extract token
+        token = None
+
+        # For /static routes, allow token via query parameter (this easy file viewing with a link without a bearer)
+        # usage http://localhost:8080/static?token=api_key
+        if request.url.path.startswith("/static"):
+            token = request.query_params.get("token", "")
+        else:
+            # For all other routes, require Bearer header
+            # # Extract Bearer token
+            auth = request.headers.get("authorization", "")
+            if auth and auth.lower().startswith("bearer "):
+                token = auth.split(" ", 1)[1]
+
+        if not token:
+            return JSONResponse(status_code=403, content={"detail": "Missing token"})
+
+        # Lookup user in DB
+        user = await vectordb.get_user_by_token.remote(token)
+        if not user:
+            return JSONResponse(status_code=403, content={"detail": "Invalid token"})
+
+        # Load user partitions
+        user_partitions = await vectordb.list_user_partitions.remote(user["id"])
+
+        # Attach to request
+        request.state.user = user
+        request.state.user_partitions = user_partitions
+        return await call_next(request)
+
+
+# Register once
+app.add_middleware(AuthMiddleware)
 
 
 # Exception handlers
-if not DISABLE_EXCEPTION_HANDLER:
-
-    @app.exception_handler(OpenRAGError)
-    async def openrag_exception_handler(request: Request, exc: OpenRAGError):
-        logger.error("OpenRAGError occurred", error=str(exc))
-        return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
+@app.exception_handler(OpenRAGError)
+async def openrag_exception_handler(request: Request, exc: OpenRAGError):
+    logger = get_logger()
+    logger.error("OpenRAGError occurred", error=str(exc))
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
 # Add CORS middleware
@@ -128,12 +188,6 @@ async def health_check(request: Request):
     return "RAG API is up."
 
 
-WITH_CHAINLIT_UI: Optional[bool] = (
-    os.getenv("WITH_CHAINLIT_UI", "true").lower() == "true"
-)
-WITH_OPENAI_API: Optional[bool] = os.getenv("WITH_OPENAI_API", "true").lower() == "true"
-
-
 # Mount the indexer router
 app.include_router(indexer_router, prefix="/indexer", tags=[Tags.INDEXER])
 # Mount the extract router
@@ -146,6 +200,8 @@ app.include_router(partition_router, prefix="/partition", tags=[Tags.PARTITION])
 app.include_router(queue_router, prefix="/queue", tags=[Tags.QUEUE])
 # Mount the actors router
 app.include_router(actors_router, prefix="/actors", tags=[Tags.ACTORS])
+# Mount the users router
+app.include_router(users_router, prefix="/users", tags=[Tags.USERS])
 
 if WITH_OPENAI_API:
     # Mount the openai router

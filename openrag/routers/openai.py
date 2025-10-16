@@ -11,35 +11,22 @@ from models.openai import (
     OpenAIChatCompletionRequest,
     OpenAICompletionRequest,
 )
-from openai import AsyncOpenAI
 from utils.dependencies import get_vectordb
 from utils.logger import get_logger
+
+from .utils import (
+    check_llm_model_availability,
+    current_user,
+    current_user_or_admin_partitions,
+    current_user_or_admin_partitions_list,
+    get_partition_name,
+)
 
 logger = get_logger()
 config = load_config()
 router = APIRouter()
 
 ragpipe = RagPipeline(config=config, logger=logger)
-
-
-async def check_llm_model_availability(request: Request):
-    models = {"VLM": config.vlm, "LLM": config.llm}
-    for model_type, param in models.items():
-        try:
-            client = AsyncOpenAI(api_key=param["api_key"], base_url=param["base_url"])
-            openai_models = await client.models.list()
-            available_models = {m.id for m in openai_models.data}
-            if param["model"] not in available_models:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Only these models ({available_models}) are available for your `{model_type}`. Please check your configuration file.",
-                )
-        except Exception as e:
-            logger.exception("Failed to validate model", model=model_type)
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Error while checking the `{model_type}` endpoint: {str(e)}",
-            )
 
 
 @router.get(
@@ -59,12 +46,14 @@ async def check_llm_model_availability(request: Request):
 async def list_models(
     _: None = Depends(check_llm_model_availability),
     vectordb=Depends(get_vectordb),
+    user_partitions=Depends(current_user_or_admin_partitions),
 ):
-    partitions = await vectordb.list_partitions.remote()
-    logger.debug("Listing models", partition_count=len(partitions))
+    if [p["partition"] for p in user_partitions] == ["all"]:
+        user_partitions = await vectordb.list_partitions.remote()
+    logger.debug("Listing models", partition_count=len(user_partitions))
 
     models = []
-    for partition in partitions:
+    for partition in user_partitions:
         model_id = f"{consts.PARTITION_PREFIX}{partition['partition']}"
         models.append(
             {
@@ -84,28 +73,6 @@ async def list_models(
         }
     )
     return JSONResponse(content={"object": "list", "data": models})
-
-
-async def __get_partition_name(model_name):
-    vectordb = get_vectordb()
-
-    partition_prefix = consts.PARTITION_PREFIX
-    if model_name.startswith(consts.LEGACY_PARTITION_PREFIX):
-        # XXX - This is for backward compatibility, but should eventually be removed
-        partition_prefix = consts.LEGACY_PARTITION_PREFIX
-
-    if not model_name.startswith(partition_prefix):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Model not found. Model should respect this format: {consts.PARTITION_PREFIX}partition_name",
-        )
-    partition = model_name.split(partition_prefix)[1]
-    if partition != "all" and not await vectordb.partition_exists.remote(partition):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Partition `{partition}` not found for given model `{model_name}`",
-        )
-    return partition
 
 
 def __prepare_sources(request: Request, docs: list[Document]):
@@ -145,6 +112,8 @@ async def openai_chat_completion(
     request2: Request,
     request: OpenAIChatCompletionRequest = Body(...),
     _: None = Depends(check_llm_model_availability),
+    user=Depends(current_user),
+    user_partitions=Depends(current_user_or_admin_partitions_list),
 ):
     model_name = request.model
     log = logger.bind(model=model_name, endpoint="/chat/completions")
@@ -161,14 +130,17 @@ async def openai_chat_completion(
         )
 
     try:
-        partition = await __get_partition_name(model_name)
+        partitions = await get_partition_name(
+            model_name, user_partitions, is_admin=user["is_admin"]
+        )
+        log.debug(f"Using partitions: {partitions}")
     except Exception as e:
         log.warning("Invalid model or partition", error=str(e))
         raise
 
     try:
         llm_output, docs = await ragpipe.chat_completion(
-            partition=[partition], payload=request.model_dump()
+            partition=partitions, payload=request.model_dump()
         )
         log.debug("RAG chat completion pipeline executed.")
     except Exception as e:
@@ -236,6 +208,8 @@ async def openai_completion(
     request2: Request,
     request: OpenAICompletionRequest,
     _: None = Depends(check_llm_model_availability),
+    user=Depends(current_user),
+    user_partitions=Depends(current_user_or_admin_partitions_list),
 ):
     model_name = request.model
     log = logger.bind(model=model_name, endpoint="/completions")
@@ -255,7 +229,9 @@ async def openai_completion(
         )
 
     try:
-        partition = await __get_partition_name(model_name)
+        partitions = await get_partition_name(
+            model_name, user_partitions, is_admin=user["is_admin"]
+        )
 
     except Exception as e:
         log.warning(f"Invalid model or partition: {e}")
@@ -263,7 +239,7 @@ async def openai_completion(
 
     try:
         llm_output, docs = await ragpipe.completions(
-            partition=[partition], payload=request.model_dump()
+            partition=partitions, payload=request.model_dump()
         )
         log.debug("RAG completion pipeline executed.")
     except Exception as e:
