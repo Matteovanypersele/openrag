@@ -164,7 +164,7 @@ async def delete_file(
     indexer=Depends(get_indexer),
     user=Depends(require_partition_editor),
 ):
-    await indexer.delete_file.remote(file_id, partition, user=user)
+    await indexer.delete_file.remote(file_id, partition)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
