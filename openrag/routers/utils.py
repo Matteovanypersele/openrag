@@ -13,7 +13,6 @@ from utils.logger import get_logger
 # load config
 config = load_config()
 logger = get_logger()
-vectordb = get_vectordb()
 task_state_manager = get_task_state_manager()
 
 SUPER_ADMIN_MODE = os.getenv("SUPER_ADMIN_MODE", "false").lower() == "true"
@@ -84,6 +83,7 @@ async def ensure_partition_role(
 ):
     """Ensure the user has at least `required_role` for the partition."""
     # Super-admin bypass
+    vectordb = get_vectordb()
     if SUPER_ADMIN_MODE and user.get("is_admin"):
         return True
 

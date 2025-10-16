@@ -33,7 +33,7 @@ from routers.queue import router as queue_router
 from routers.search import router as search_router
 from routers.users import router as users_router
 from starlette.middleware.base import BaseHTTPMiddleware
-from utils.dependencies import vectordb
+from utils.dependencies import get_vectordb
 from utils.exceptions import OpenRAGError
 from utils.logger import get_logger
 
@@ -96,6 +96,7 @@ app.openapi = custom_openapi
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        vectordb = get_vectordb()
         # Skip if no AUTH_TOKEN configured
         if AUTH_TOKEN is None:
             user = await vectordb.get_user.remote(1)
