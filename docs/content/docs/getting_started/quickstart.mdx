@@ -1,58 +1,167 @@
 ---
 title: Quick Start
 ---
-
-import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import compose_ollama_cpu from '../../../assets/compose_ollama_cpu.yaml?raw';
-import env_ollama_cpu from '../../../assets/env_ollama_cpu.env?raw';
-import compose_linux_gpu from '../../../assets/compose_linux_gpu.yaml?raw';
-import env_linux_gpu from '../../../assets/env_linux_gpu.env?raw';
+import { Code } from '@astrojs/starlight/components';
+import env_example from '../../../assets/env_example.env?raw';
+import { FileTree } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 OpenRAG is an open source Retrieval Augmented Generation (RAG) solution. This guide is a step-by-step walkthrough to help you get started with OpenRAG.
-
-- Before proceeding, ensure your hardware meets the [recommended specifications](/minimum-specifications).
-- Install [Docker](https://www.docker.com/get-started).
-
 ## Docker
+### Prerequisites
+- [Docker](https://www.docker.com/get-started) and **Docker Compose**
+- Your hardware should meet these specifications:
+  - **CPU deployment**: Minimum **13 GiB** RAM for light PDF parsers (**`PyMuPDF4LLMLoader`, `PyMuPDFLoader`**), or **23 GiB** RAM for heavier parsers like **`MarkerLoader`** (refer to [this section](/getting_started/quickstart/#3-file-parser-configuration) for details)
+  - **GPU deployment**: **16 GB** GPU memory recommended (for systems with separate CPU and GPU memory)
 
-Use the following `docker-compose.yml` file to set up a simple OpenRAG environment:
+### Installation and Configuration
+#### 1. Clone the repository:
 
-<Tabs>
-    <TabItem label="Linux">
-        <Tabs>
-            <TabItem label="Nvidia GPU">
-                <details>
-                    <summary>Click to expand the docker-compose.yml content</summary>
-                    <Code code={compose_linux_gpu} lang="yaml" />
-                </details>
-                You will also need to provide some environment variables. Create a `.env` file in the same directory as your `docker-compose.yml` file with the following content:
-                <details>
-                    <summary>Click to expand the .env content</summary>
-                    <Code code={env_linux_gpu} lang="bash" />
-                </details>
+```bash title="Cloning the OpenRag repository"
+git clone --recurse-submodules git@github.com:linagora/openrag.git
 
-            </TabItem>
-            <TabItem label="CPU">
-                ```yaml
-                Nothing here
-                ```
-            </TabItem>
-        </Tabs>
+cd openrag/
+git checkout main # or a given release
+```
+#### 2. Create a `.env` File
+Create a `.env` file at the root of the project, mirroring the structure of `.env.example`, to configure your environment and supply blank environment variables.
+
+```bash title="Creating the .env file mirroring .env.example"
+cp .env.example .env
+```
+Here is a brief overview of key environment variables to configure:
+
+<Code code={env_example} lang="bash" title='.env'/>
+
+#### 3. File Parser configuration 
+All supported file format parsers are pre-configured. For PDF processing, **[MarkerLoader](https://github.com/datalab-to/marker)** serves as the default parser, offering comprehensive support for OCR-scanned documents, complex layouts, tables, and embedded images. MarkerLoader operates efficiently on both GPU and CPU environments.
+
+:::note 
+For **`CPU-only deployments`** or lightweight testing scenarios, you can consider switching to **`PyMuPDF4LLMLoader`** or **`PyMuPDFLoader`**. To change the loader, set the **`PDFLoader`** variable like this `PDFLoader=PyMuPDF4LLMLoader`.
+:::caution[Important]
+These alternative loaders have limitations - they cannot process non-searchable (image-based) PDFs and do not extract or handle embedded images.
+:::
+
+#### Deployment
+:::tip[Setting up the Indexer UI]
+In case **`Indexer UI` (A Web interface for intuitive document ingestion, indexing, and management.)** is not configured already in your `.env`, follow this dedicated guide:
+➡ [Deploy with Indexer UI](/documentation/setup_indexerui/)
+:::
+
+##### `Simple and quick` launch for testing
+  :::info
+  [OpenRAG repository](https://github.com/linagora/openrag) contains a ready-to-use `docker-compose.yml` file in the **`quick_start` folder**. This setup is ideal for local testing and quick deployments.
+  <FileTree>
+  - quick_start
+    - extern reranker and embedder utils
+      - vllm cpu dockerfile for different architectures
+        - Dockerfile.cpu for x86 CPU
+      - infinity.yaml reranker service
+    - vdb
+      - milvus.yaml
+    - docker-compose.yml
+    - .env the configured .env file
+  </FileTree>
+  :::
+
+  1. Navigate to the **`quick_start`** directory or copy it
+  2. Place your **`.env`** file in the **`quick_start`** folder
+  3. Run the appropriate command for your system:
+
+
+  <Tabs>
+    <TabItem label="GPU">
+    GPU deployment, recommended for optimal performance
+
+    ```bash frame="none" {4}
+    docker compose up -d
+
+    # run the following command to stop the application
+    # docker compose down
+    ```
+    </TabItem>
+    <TabItem label="x86 CPU">
+    CPU deployment
+    ```bash frame="none" "--profile cpu" {4}
+    docker compose --profile cpu up -d
+
+    # to stop the application
+    # docker compose --profile cpu down
+    ```
     </TabItem>
     <TabItem label="MacOS">
-        The simplest way to run OpenRAG on MacOS is to use the ollama model inference server. For more in-depth deployment options, refer to the [Docker installation guide](/installation/docker).
-        <details>
-        <summary>Click to expand the docker-compose.yml content</summary>
-        <Code code={compose_ollama_cpu} lang="yaml" />
-        </details>
+    :::danger[Important]
+    **`Apple Metal/MPS`** is not currently supported in Docker. Additionally, our implementations of **vLLM** (embeddings) and **Infinity** (reranking) are not optimized for macOS: **`We are working on it`**.
+    :::
+    As an alternative, you can use **Ollama** or **LlamaCpp** to run embeddings locally on macOS using MPS. The embedder is OpenAI-compatible, so you can configure it via the `.env` file.
 
-        You will also need to provide some environment variables. Create a `.env` file in the same directory as your `docker-compose.yml` file with the following content:
-        <details>
-        <summary>Click to expand the .env content</summary>
-        <Code code={env_ollama_cpu} lang="bash" />   
-        </details>
+
+    1. **Disable Docker services for embeddings and reranking**
+      Comment out the relevant services in `docker-compose.yml`.
+
+    2. **Disable the reranker**
+      :::note[Important]
+      Our reranker interface matches the [Infinity](https://github.com/michaelfeil/infinity) API and is not OpenAI-compatible: Current work is being done for that.
+      ```bash
+      // .env
+      RERANKER_ENABLED=False
+      ```
+      :::
+
+    3. **Run an external embedding service**
+      Deploy an embedding service with **LlamaCpp** or **Ollama** locally. Then, configure your `.env` with the following variables:
+
+      ```bash
+      // .env
+      EMBEDDER_MODEL_NAME=...
+      EMBEDDER_BASE_URL=...
+      EMBEDDER_API_KEY=...
+      ```
     </TabItem>
-</Tabs>
+  </Tabs>
+
+
+##### Development Environment
+
+For development builds, use the **`--build`** flag to rebuild images:
+  Execute these commands from the project root directory or the cloned repository:
+
+  <FileTree>
+    - .github/
+    - .hydra_config/
+    - ...
+    - extern/
+    - vdb/
+    - docker-compose.yml
+    - README.md
+    - .env.example
+    - pyproject.toml
+    - uv.lock
+    - .env the configured .env file
+  </FileTree>
+
+  <Tabs>
+    <TabItem label="GPU">
+    GPU deployment
+    ```bash frame="none" {4}
+    docker compose up -d
+
+    # run the following command to stop the application
+    # docker compose down
+    ```
+    </TabItem>
+    <TabItem label="CPU">
+    CPU deployment
+    ```bash frame="none" "--profile cpu" {4}
+    docker compose --profile cpu up -d
+
+    # to stop the application
+    # docker compose --profile cpu down
+    ```
+    </TabItem>
+  </Tabs>
+
+Once the app is up and running, you can access the provided services. See the next section.
 
 ## Ansible
 

@@ -119,7 +119,7 @@ Test the VPN connection:
 
 ---
 
-:::caution
+:::caution{icon="approve-check"}
 - After the VPN is up, you can configure services like **NFS** using the **10.0.0.0/24 private network**.
 - Make sure your firewall allows `UDP 51820`.
 - Adjust the `AllowedIPs` and network according to your needs.

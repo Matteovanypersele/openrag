@@ -1,6 +1,5 @@
 include:
   - vdb/milvus.yaml
-  - ${CHAINLIT_DATALAYER_COMPOSE:-extern/dummy.yaml}
   - extern/infinity.yaml
 
 x-openrag: &openrag_template
@@ -10,12 +9,12 @@ x-openrag: &openrag_template
     context: .
     dockerfile: Dockerfile
   volumes:
-    - ${CONFIG_VOLUME:-./.hydra_config}:/app/.hydra_config # For dev mode
+    # - ${CONFIG_VOLUME:-./.hydra_config}:/app/.hydra_config
     - ${DATA_VOLUME:-./data}:/app/data
     - ${MODEL_WEIGHTS_VOLUME:-~/.cache/huggingface}:/app/model_weights # Model weights for RAG
-    - ./openrag:/app/openrag # For dev mode
+    # - ./openrag:/app/openrag # For dev mode
     - /$SHARED_ENV:/ray_mount/.env # Shared environment variables
-    - ./logs:/app/logs # For dev mode
+    # - ./logs:/app/logs
   ports:
     - ${APP_PORT:-8080}:${APP_iPORT:-8080}
     - ${RAY_DASHBOARD_PORT:-8265}:8265 # Disable when in cluster mode
@@ -59,9 +58,9 @@ services:
   # OpenRAG Indexer UI
   indexer-ui:
     image: linagoraai/indexer-ui:v1.1
-    build:
-      context: ./extern/indexer-ui
-      dockerfile: Dockerfile
+    # build:
+    #   context: ./extern/indexer-ui
+    #   dockerfile: Dockerfile
     environment:
       - API_BASE_URL=${API_BASE_URL:-http://localhost:${APP_PORT:-8080}}
       - INCLUDE_CREDENTIALS=${INCLUDE_CREDENTIALS:-false}

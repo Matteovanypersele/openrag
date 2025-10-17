@@ -2,7 +2,6 @@ include:
   - vdb/milvus.yaml
   - ${CHAINLIT_DATALAYER_COMPOSE:-extern/dummy.yaml}
   - extern/infinity.yaml
-  - ${INDEXERUI_COMPOSE_FILE:-extern/indexer-ui/docker-compose.yaml}
 
 x-openrag: &openrag_template
   image: ghcr.io/linagora/openrag:dev-latest

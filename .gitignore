@@ -1,6 +1,5 @@
 # Ignore environment files
 .env
-node_modules
 
 # generate files and folders
 .files/
