@@ -1,0 +1,4 @@
+Distance is how far one thing is from another thing. It is also a measure of the space between two things. It can be measured along any path. Thus, someone who goes around in a circle has traveled a distance, even though his position has not changed.
+In geometry, the distance between two points "A" and "B" is sometimes written as formula_1. Pythagorean theorem is often used in the calculation of distance. Distance is a scalar, and thus is different from displacement. Displacement is a vector that measures distance with a straight line (and in only one path). Displacement is the shortest way to travel the distance.
+References.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

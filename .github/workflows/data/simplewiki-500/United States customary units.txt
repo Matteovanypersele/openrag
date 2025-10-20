@@ -1,0 +1,12 @@
+U.S. customary units are the main system of units of measurement used to measure things in the United States and U.S. territories (except in Puerto Rico and Guam, where the metric system is also officially used and is dominant). The system of Imperial units, on which the U.S. customary units are based, is very similar but there are some differences.
+Length or distance units include the inch, foot, yard and mile.
+Land units include square miles (2589998.47032 square meter) and acres (4046.8726 square meter).
+Common volume units are the teaspoon, tablespoon (3 teaspoons), fluid ounce (two tablespoons), cup (8 ounces), pint (2 cups, or 16 fluid ounces), quart (2 pints, or 32 fluid ounces), US gallon (16 cups, 128 fluid ounces, or 3.8 liters).
+A barrel is the unit to measure oil.
+Temperature is measured in degrees Fahrenheit (°F). Here is a formula to convert from °C to °F: formula_1
+Units of weight and mass include the pound (453.6 grams), which contains 16 ounces. This should not be confused with the British pound which is a type of money. The different uses of the word "pound" can cause confusion. Different sizes of ounce are also in use.
+Some people have been trying to replace these units with the metric system since the 1820s. Much infrastructure in the United States and British Empire was built in past centuries using the old measures. During the 20th century some sectors such as science, medicine and the military of the United States converted to metric but Americans still use the old units for daily purposes. On the other hand, world trade is conducted using the metric system and except for the US, the world uses the metric system for almost all purposes.
+Notes.
+&lt;templatestyles src="Reflist/styles.css" /&gt;
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

@@ -1,0 +1,16 @@
+ Computer science deals with the theoretical foundations of computation and practical techniques for their application.
+Computer science is the science of information. Computer scientists study different ways of reading, using, and encoding information.
+There are many different areas within computer science. In some areas, scientists only work with ideas "on paper". In other areas they use those ideas to make things like computers and computer programs.
+A person who works in computer science will often need to understand logic and mathematics.
+Common tasks for a computer scientist.
+Asking questions.
+This is so people can find new and easier ways to do things, and the way to approach problems with this information.
+While computers can do some things easily (like simple math, or sorting out a list of names from A-to-Z), computers cannot answer questions when there is not enough information, or when there is no real answer. Also, computers may take too much time to finish long tasks. For example, it may take too long to find the shortest way through all of the towns in the USA - so instead a computer will try to make a close guess. A computer will answer these simpler questions much faster.
+Answering the question.
+Algorithms are a specific set of instructions or steps on how to complete a task. For example, a computer scientist wants to sort playing cards. There are many ways to sort them - by suits (diamonds, clubs, hearts, and spades) or by numbers (2, 3, 4, 5, 6, 7, 8, 9, 10, Jack, Queen, King, and Ace). By deciding on a set of steps to sort the cards, the scientist has created an algorithm. The scientist then needs to test whether this algorithm works. This shows how well and how fast the algorithm sorts cards.
+A simple but slow algorithm is: pick up two cards and check whether they are sorted correctly. If they are not, reverse them. Then do it again with another two, and repeat them all until they are all sorted. This is called a bubble sort. This method will work, but it will take a very long time.
+A better algorithm is: find the first card with the smallest suit and smallest number (2 of diamonds), and place it at the start. After this, look for the second card, and so on. This algorithm is much faster, and does not need much space. This algorithm is called a "selection sort".
+Ada Lovelace wrote the first computer algorithm in 1843, for a computer that was never finished. Computers began during World War II. Computer science separated from the other sciences during the 1960s and 1970s. Now, computer science has its own methods, and has its own technical terms. It is related to electrical engineering, mathematics, and language science.
+Computer science looks at the theoretical parts of computers. Computer engineering looks at the physical parts of computers (hardware). Software engineering looks at the use of computer programs and how to make them.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

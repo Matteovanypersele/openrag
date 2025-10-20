@@ -1,0 +1,19 @@
+Capitalization (North American spelling), or capitalisation (British spelling), is a process to make one letter or more uppercase. The first letter of a sentence is capitalised in many languages, as are the first letters of proper nouns such as names of people and places. In German, however, all nouns are capitalized.
+In the Latin alphabet, which is used in English, these are the uppercase or capital letters or majuscules:
+A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z
+These are the lowercase or small letters or minuscules:
+a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z
+The homonym "(to) capitalize" is a different word and it means "to fully fund as an investment".
+Names of capitalization styles.
+There are many ways to use capitalization and they have names.
+Sentence case.
+"The quick brown fox jumps over the lazy dog."
+Sentence case is the standard case used in English prose and in many other languages. Only the first word is capitalized, except for proper nouns and other words which are generally capitalized by a more specific rule.
+Title case.
+When something is written in title case (also known as capital case or headline style), all words are capitalized, except for certain minor words, such as "the", "of" or "and".
+All caps.
+"The quick brown fox jumps over the lazy dog."
+When something is written in all caps (or all-caps), every single letter is uppercase, with no exceptions.
+Camel case.
+Camel case (or CamelCase) is the practice of writing compound words or phrases so that each next word or abbreviation is capitalized. It can either start with a lowercase or uppercase letter. Common examples are PowerPoint or iPhone.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

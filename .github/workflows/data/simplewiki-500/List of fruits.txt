@@ -1,0 +1,4 @@
+Fruits on this list are defined as the word is used in everyday speech. It does not include vegetables, whatever their origin.
+The following items are fruits according to the scientific definition, but are sometimes considered to be vegetables:
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

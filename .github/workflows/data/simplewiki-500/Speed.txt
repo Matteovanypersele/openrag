@@ -1,0 +1,21 @@
+Speed is a measure.
+It is velocity but without the direction.
+Finding speed.
+Speed is the distance an object moves in a given amount of time.
+The distance is never negative.
+If a train takes 1 hour to travel 100 kilometers, it has a speed of .
+In fact this is the "average speed".
+During this one hour, the train may become slower and faster, it may even drive backwards.
+The average speed of an object in a certain time is the distance the object traveled divided by the time.
+The instantaneous speed is the average speed when the time is very small, almost zero.
+Units.
+There are many units of measurement.
+Since the 20th century following units were widely used by humans:
+Different units are used for different applications.
+People controlling planes and ships frequently use Knot (speed).
+Sometimes a Mach number is used.
+Range.
+The smallest speed is .
+A “negative speed” would be in fact a velocity.
+The biggest speed is the speed of light.
+You can write bigger speeds, but they are not possible in this universe.

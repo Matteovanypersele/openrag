@@ -1,0 +1,13 @@
+Microsoft Windows is an operating system for computers made by the United States-based company Microsoft. Windows is used by almost 90% of desktop and laptop computers.
+History.
+The first version of Windows, Windows 1.0, came out on November 20, 1985. The newest version, Windows 11, came out October 5, 2021. Most personal computers made after 2015 come with Windows 10. However, some older or cheaper personal computers may come with Windows 8.1 or Windows 7.
+Windows makes it easier to run programs (applications) than MS-DOS did. DOS required typed commands to make the computer do something. However, DOS required correct syntax of each command. Making mistakes caused the computer to usually give an error message and do nothing.
+Design.
+Users control their Windows computer by its graphical user interface (or GUI for short). It only needs a keyboard "or" a mouse to work. In later versions, a touch screen works as well. However, using both a keyboard and a mouse makes many tasks easier. By clicking a few buttons on the screen, Windows helps keep your files safe, and easier to change and move. Versions of Windows after 2005 make it even easier for some users with disabilities because these versions have touch screens. For use of a touch screen, some mobile devices come with Windows. Tablet computers and smartphones such as Microsoft Surface and Microsoft Lumia use Windows.
+Programs.
+The following programs are included with Windows:
+Windows has several kinds of applications/programs available. Popular applications include games, word processors (to write words) or additional programs like Adobe Flash Player (to watch some videos and play many games on internet sites). Adding new applications to Windows is called "installing". Applications can be bought/purchased on a CD or DVD. Applications can also be downloaded from the Internet. Some internet applications can be downloaded for free, and others can be bought using the internet.
+Criticism.
+Many users complain that Windows creates problems for them. Some users complain that Windows made their computers slower when they changed from DOS. Many people also complain about problems that make their computer less safe to use, even though Microsoft tries to fix these problems. Many computer viruses are created to infect computers running Windows since it is such a popular operating system. Windows was the most popular operating system until recently (today mobile operating systems such as Android are more popular).
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

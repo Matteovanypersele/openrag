@@ -1,0 +1,16 @@
+The Flesch Reading Ease (FRES) score says how easy something is to read. J. Peter Kincaid and others made this formula for the U.S. Navy in 1975.
+How it works.
+The FRES test works by counting the number of words, syllables, and sentences in the text. It then calculates the average number of words per sentence and the average number of syllables per word. The idea is that shorter words and shorter sentences are easier to read. The higher the score, the easier the text is to understand. The formula is:
+formula_1
+Some points of reference for the score are:
+The highest score possible is 121.22. It is gained if every sentence only has a one-syllable word.
+"The cat sat on the mat" scores 116. There is no lower limit to this score. Some very complicated
+sentences can have negative scores.
+The Flesch score is usually lower for technical documentation because the topic itself is complicated.
+Someone who uses the test regularly will develop a sense of a reasonable score for this type of writing.
+They can then aim to align with this score.
+The Flesch score for this subsection is 74.
+Tools.
+Tools to calculate the Flesch Reading Ease include:
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

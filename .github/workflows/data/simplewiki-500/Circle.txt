@@ -1,0 +1,34 @@
+A circle is a round, two-dimensional shape. All points on the edge of the circle are at the same distance from the center.
+The radius of a circle is a line from the center of the circle to a point on the side. Mathematicians use the letter formula_1 for the length of a circle's radius. The center of a circle is the point in the very middle. It is often written as formula_2.
+The diameter (meaning "all the way across") of a circle is a straight line that goes from one side to the opposite and right through the center of the circle. Mathematicians use the letter formula_3 for the length of this line. The diameter of a circle is equal to twice its radius (formula_3 equals formula_5 times formula_1):
+formula_7
+The circumference (meaning "all the way around") of a circle is the line that goes around the center of the circle. Mathematicians use the letter formula_8 for the length of this line.
+The number formula_9 (written as the Greek letter "pi") is a very useful number. It is the length of the circumference divided by the length of the diameter (formula_9 equals formula_8 divided by formula_3). As a fraction the number formula_9 is equal to about formula_14 or formula_15 (which is closer) and as a number it is about formula_16.
+The area, formula_17, inside a circle is equal to the radius multiplied by itself, then multiplied by formula_9 (formula_17 equals formula_9 times formula_1 times formula_1).
+formula_23
+Calculating π.
+formula_9 can be measured by drawing a circle, then measuring its diameter (formula_3) and circumference (formula_8). This is because the circumference of a circle is always equal to formula_9 times its diameter.
+formula_28
+formula_9 can also be calculated by only using mathematical methods. Most methods used for calculating the value of formula_9 have desirable mathematical properties. However, they are hard to understand without knowing trigonometry and calculus. However, some methods are quite simple, such as this form of the Gregory-Leibniz series:
+formula_31
+While that series is easy to write and calculate, it is not easy to see why it equals formula_9. A much easier way to approach is to draw an imaginary circle of radius formula_1 centered at the origin. Then any point formula_34 whose distance formula_3 from the origin is less than formula_1, calculated by the Pythagorean theorem, will be inside the circle:
+formula_37
+Finding a set of points inside the circle allows the circle's area formula_17 to be estimated, for example, by using integer coordinates for a big formula_1. Since the area formula_17 of a circle is formula_9 times the radius squared, formula_9 can be approximated by using the following formula:
+formula_43
+Calculating measures of a circle.
+Area.
+Using the radius: formula_44
+Using the diameter: formula_45
+Using the circumference: formula_46
+Circumference.
+Using the radius: formula_47
+Using the diameter: formula_48
+Using the area: formula_49
+Diameter.
+Using the radius: formula_7
+Using the circumference: formula_51
+Using the area: formula_52
+Radius.
+Using the diameter: formula_53
+Using the circumference: formula_54
+Using the area: formula_55

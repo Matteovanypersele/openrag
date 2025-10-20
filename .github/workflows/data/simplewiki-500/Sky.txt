@@ -1,0 +1,8 @@
+The sky is the appearance of the atmosphere around the surface of the planet from our point of view. We see many objects that are actually in space such as the Sun, the Moon, and stars because they are in the sky. On a clear day the sky appears blue.
+At night it appears from very dark blue to black. The deepness of the blue increases as we look toward the horizon, and up to the point above us.
+The sky, which is made up of gas molecules, is blue because of the random scattering of sunlight by the molecules. Rayleigh scattering defines the amount of scattering of light rays. 
+Blue light scatters much more than red, which is why the sky appears blue on a clear day. Depending on the time of day, the sky may appear different colors. At dawn (sunrise) or dusk (sunset) the sky may appear red, orange, and other colors depending on how low the sun is and how close it is to night. 
+Other planets have skies too. Because the types of gases in their atmospheres are different, they have different sky colors. For example, the sky on Mars is pink.
+Many things can be seen in the sky. There are objects from space like the Sun, Moon, planets and stars. There are also many weather events seen in the sky. For example, these can be clouds, rain, lightning, or fog. Weather is caused by different patterns and temperatures in the atmosphere. Other things that can be seen in the sky are birds, other flying animals, and aircraft.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;
