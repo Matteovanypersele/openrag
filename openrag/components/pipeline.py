@@ -33,8 +33,9 @@ class RetrieverPipeline:
         logger.debug("Reranker", enabled=self.reranker_enabled)
         self.reranker_top_k = int(config.reranker["top_k"])
 
-        # map reduce
-        self.map_reduce_n_docs = self.config.map_reduce["map_reduce_n_docs"]
+        # map & reduce
+        self.retriever_top_k = int(config.retriever["top_k"])
+        self.map_reduce_max_docs = self.config.map_reduce["max_total_documents"]
 
         if self.reranker_enabled:
             self.reranker = Reranker(logger, config)
@@ -44,7 +45,7 @@ class RetrieverPipeline:
     ) -> list[Document]:
         docs = await self.retriever.retrieve(partition=partition, query=query)
         top_k = (
-            max(self.map_reduce_n_docs, self.reranker_top_k)
+            max(self.map_reduce_max_docs, self.reranker_top_k)
             if use_map_reduce
             else self.reranker_top_k
         )
@@ -131,19 +132,7 @@ class RagPipeline:
         )
 
         if use_map_reduce and docs:
-            context = "Extracted documents:\n"
-            summarized_docs = []
-            res = await self.map_reduce.map(query=query, chunks=docs)
-
-            for i, (synthesis, doc) in enumerate(res):
-                context += f"* {i}: {synthesis}"
-                context += "\n" + "-" * 10 + "\n"
-                summarized_docs.append(
-                    Document(page_content=synthesis, metadata=doc.metadata)
-                )
-
-            # logger.debug("Context after map-reduce", context=context)
-            docs = summarized_docs
+            docs = await self.map_reduce.map(query=query, chunks=docs)
 
         # 3. Format the retrieved docs
         context = format_context(docs)

@@ -53,7 +53,17 @@ reranker:
   base_url: ${oc.env:RERANKER_BASE_URL, http://reranker:${oc.env:RERANKER_PORT, 7997}}
 
 map_reduce:
-  map_reduce_n_docs: ${oc.decode:${oc.env:MAP_REDUCE_N_DOCS, 10}} # Number of documents to use in map-reduce
+  # Number of documents to process in the initial mapping phase
+  initial_batch_size: ${oc.decode:${oc.env:MAP_REDUCE_INITIAL_BATCH_SIZE, 10}}
+  
+  # Number of additional documents to probe when all previous chunks are relevant
+  expansion_batch_size: ${oc.decode:${oc.env:MAP_REDUCE_EXPANSION_BATCH_SIZE, 5}}
+  
+  # Maximum total number of documents (chunks) to process across all iterations
+  max_total_documents: ${oc.decode:${oc.env:MAP_REDUCE_MAX_TOTAL_DOCUMENTS, 20}}
+
+  # Enable debug logging for map & reduce
+  debug: ${oc.decode:${oc.env:MAP_REDUCE_DEBUG, true}}
 
 verbose:
   verbose: true

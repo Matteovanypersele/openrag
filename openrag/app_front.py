@@ -118,7 +118,7 @@ async def chat_profile(current_user: cl.User):
                     markdown_description=description_template.format(
                         name=m.id, partition=partition
                     ),
-                    icon="public/favicon.svg",
+                    icon="/public/favicon.svg",
                 )
             )
         return chat_profiles
