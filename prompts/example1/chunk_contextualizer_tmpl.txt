@@ -1,4 +1,4 @@
-**Objective**: Succinctly write a contextualization text for the following chunk (from a document) by integrating the provided elements.
+Succinctly write a contextualization text for the following chunk (from a document) by integrating the provided elements.
 
 **Writing Instructions**:
 1. Take into account:

@@ -17,4 +17,5 @@ From a chat history, reformulate the user's last message into an autonomous sear
 - User: What are the must-see sites?
 Reformulated query: What are the must-see historical monuments and local cuisine restaurants in Italy?
 
-# Response format: Return only the reformulated query in plain text, without additional formatting.
+# Response format: 
+Return only the reformulated query in plain text, without additional formatting.

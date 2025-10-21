@@ -4,4 +4,3 @@ defaults:
 type: hyde
 # Extra params
 combine: False
-prompt_tmpl: 'hyde.txt'

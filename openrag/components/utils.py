@@ -2,7 +2,6 @@ import asyncio
 import atexit
 import threading
 from abc import ABCMeta
-from pathlib import Path
 
 import ray
 from config import load_config
@@ -117,12 +116,6 @@ class DistributedSemaphore:
         if self._actor is None:
             self._init_actor()
         ray.get(self._actor.cleanup.remote())
-
-
-def load_sys_template(file_path: Path) -> tuple[str, str]:
-    with open(file_path, mode="r") as f:
-        sys_msg = f.read()
-        return sys_msg
 
 
 def format_context(docs: list[Document]) -> str:

@@ -3,4 +3,3 @@ defaults:
 
 type: multiQuery
 k_queries: 3
-prompt_tmpl: multi_query_prompt_template.txt

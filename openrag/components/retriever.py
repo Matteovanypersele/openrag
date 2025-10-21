@@ -2,14 +2,13 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+from components.prompts import HYDE_PROMPT, MULTI_QUERY_PROMPT
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from omegaconf import OmegaConf
 from utils.dependencies import get_vectordb
-
-from .utils import load_sys_template
 
 CRITERIAS = ["similarity"]
 
@@ -114,12 +113,8 @@ class MultiQueryRetriever(BaseRetriever):
                 raise TypeError(f"`k_queries` should be of type {int}")
             self.k_queries = k_queries
 
-            pmpt_tmpl_path = extra_args.get("prompts_dir") / extra_args.get(
-                "prompt_tmpl"
-            )
-            multi_query_tmpl = load_sys_template(pmpt_tmpl_path)
             prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(
-                multi_query_tmpl
+                MULTI_QUERY_PROMPT
             )
             self.generate_queries = (
                 prompt | llm | StrOutputParser() | (lambda x: x.split("[SEP]"))
@@ -159,11 +154,7 @@ class HyDeRetriever(BaseRetriever):
             if not isinstance(llm, ChatOpenAI):
                 raise TypeError(f"`llm` should be of type {ChatOpenAI}")
 
-            pmpt_tmpl_path = extra_args.get("prompts_dir") / extra_args.get(
-                "prompt_tmpl"
-            )
-            hyde_template = load_sys_template(pmpt_tmpl_path)
-            prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(hyde_template)
+            prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(HYDE_PROMPT)
 
             self.generate_hyde = prompt | llm | StrOutputParser()
             self.combine = extra_args.get("combine", False)

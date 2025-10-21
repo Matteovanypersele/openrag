@@ -59,16 +59,20 @@ verbose:
   level: ${oc.env:LOG_LEVEL, DEBUG}
 
 paths:
-  prompts_dir: ${oc.env:PROMPTS_DIR, ../prompts/example3}
+  prompts_dir: ${oc.env:PROMPTS_DIR, ../prompts/example1}
   data_dir: ${oc.env:DATA_DIR, ../data}
   db_dir: ${oc.env:DB_DIR, /app/db}
   log_dir: ${oc.env:LOG_DIR, /app/logs}
 
-prompt:
-  rag_sys_pmpt: rag_sys_prompt_template.txt
-  contextualizer_pmpt: contextualizer_pmpt.txt
-  chunk_contextualizer_pmpt: chunk_contextualizer_tmpl.txt
-  image_describer: image_captioning.txt
+prompts:
+  sys_prompt: sys_prompt_tmpl.txt
+  query_contextualizer: query_contextualizer_tmpl.txt
+  chunk_contextualizer: chunk_contextualizer_tmpl.txt
+  image_describer: image_captioning_tmpl.txt
+
+  # query templates for different retriever types
+  hyde: hyde.txt
+  multi_query: multi_query_pmpt_tmpl.txt
 
 loader:
   image_captioning: true

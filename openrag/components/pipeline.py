@@ -1,7 +1,7 @@
 import copy
 from enum import Enum
-from pathlib import Path
 
+from components.prompts import QUERY_CONTEXTUALIZER_PROMPT, SYS_PROMPT_TMPLT
 from langchain_core.documents.base import Document
 from openai import AsyncOpenAI
 from utils.logger import get_logger
@@ -10,7 +10,7 @@ from .llm import LLM
 from .map_reduce import RAGMapReduce
 from .reranker import Reranker
 from .retriever import ABCRetriever, RetrieverFactory
-from .utils import format_context, load_sys_template
+from .utils import format_context
 
 logger = get_logger()
 
@@ -70,17 +70,6 @@ class RagPipeline:
         # retriever pipeline
         self.retriever_pipeline = RetrieverPipeline(config=config, logger=self.logger)
 
-        self.prompts_dir = Path(config.paths.prompts_dir)
-        # contextualizer prompt
-        self.contextualizer_pmpt = load_sys_template(
-            self.prompts_dir / config.prompt["contextualizer_pmpt"]
-        )
-
-        # rag sys prompt
-        self.rag_sys_prompt: str = load_sys_template(
-            self.prompts_dir / config.prompt["rag_sys_pmpt"]
-        )
-
         self.rag_mode = config.rag["mode"]
         self.chat_history_depth = config.rag["chat_history_depth"]
 
@@ -117,7 +106,7 @@ class RagPipeline:
                 response = await self.contextualizer.chat.completions.create(
                     model=self.config.vlm["model"],
                     messages=[
-                        {"role": "system", "content": self.contextualizer_pmpt},
+                        {"role": "system", "content": QUERY_CONTEXTUALIZER_PROMPT},
                         {
                             "role": "user",
                             "content": f"Given the following chat, generate a query. \n{chat_history}\n",
@@ -171,7 +160,7 @@ class RagPipeline:
             0,
             {
                 "role": "system",
-                "content": self.rag_sys_prompt.format(context=context),
+                "content": SYS_PROMPT_TMPLT.format(context=context),
             },
         )
         payload["messages"] = messages

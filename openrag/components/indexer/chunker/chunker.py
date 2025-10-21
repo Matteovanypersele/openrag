@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from components.utils import get_llm_semaphore, load_config, load_sys_template
+from components.prompts import CHUNK_CONTEXTUALIZER
+from components.utils import get_llm_semaphore, load_config
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -20,9 +21,6 @@ from .utils import add_overlap, combine_chunks, combine_md_elements, split_md_el
 
 logger = get_logger()
 config = load_config()
-prompt_paths = Path(config.paths.get("prompts_dir"))
-chunk_contextualizer_pmpt = config.prompt.get("chunk_contextualizer_pmpt")
-CHUNK_CONTEXTUALIZER = load_sys_template(prompt_paths / chunk_contextualizer_pmpt)
 
 
 class BaseChunker(ABC):
