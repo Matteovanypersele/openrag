@@ -1,6 +1,6 @@
 defaults:
-  - _self_  # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
-  - chunker: recursive_splitter # markdown_splitter # semantic_splitter # 
+  - _self_ # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
+  - chunker: recursive_splitter # markdown_splitter # semantic_splitter #
   - retriever: single
   - rag: ChatBotRag
 
@@ -19,7 +19,7 @@ llm:
 vlm:
   <<: *llm_params
   base_url: ${oc.env:VLM_BASE_URL}
-  model: ${oc.env:VLM_MODEL}  
+  model: ${oc.env:VLM_MODEL}
   api_key: ${oc.env:VLM_API_KEY}
 
 semaphore:
@@ -31,12 +31,12 @@ embedder:
   model_name: ${oc.env:EMBEDDER_MODEL_NAME, jinaai/jina-embeddings-v3}
   base_url: ${oc.env:EMBEDDER_BASE_URL, http://vllm:8000/v1}
   api_key: ${oc.env:EMBEDDER_API_KEY, EMPTY}
-  
+
 vectordb:
   host: ${oc.env:VDB_HOST, milvus}
   port: ${oc.env:VDB_iPORT, 19530}
   connector_name: ${oc.env:VDB_CONNECTOR_NAME, milvus}
-  collection_name: ${oc.env:VDB_COLLECTION_NAME, vdb_test} 
+  collection_name: ${oc.env:VDB_COLLECTION_NAME, vdb_test}
   hybrid_search: true
   enable: true
 
@@ -89,7 +89,7 @@ loader:
     audio/mpeg: .mp3
   file_loaders:
     txt: TextLoader
-    pdf: ${oc.env:PDFLoader, MarkerLoader}  # DoclingLoader # MarkerLoader # PyMuPDFLoader # Custompymupdf4llm
+    pdf: ${oc.env:PDFLoader, MarkerLoader} # DoclingLoader # MarkerLoader # PyMuPDFLoader # Custompymupdf4llm
     eml: EmlLoader
     docx: DocxLoader
     pptx: PPTXLoader
@@ -112,6 +112,15 @@ loader:
   marker_min_processes: ${oc.decode:${oc.env:MARKER_MIN_PROCESSES, 1}}
   marker_num_gpus: ${oc.decode:${oc.env:MARKER_NUM_GPUS, 0.01}}
   marker_timeout: ${oc.decode:${oc.env:MARKER_TIMEOUT, 3600}}
+  openai:
+    base_url: ${oc.env:OPENAI_LOADER_BASE_URL, http://openai:8000/v1}
+    api_key: ${oc.env:OPENAI_LOADER_API_KEY, EMPTY}
+    model: ${oc.env:OPENAI_LOADER_MODEL, dotsocr-model}
+    temperature: ${oc.decode:${oc.env:OPENAI_LOADER_TEMPERATURE, 0.2}}
+    timeout: ${oc.decode:${oc.env:OPENAI_LOADER_TIMEOUT, 180}}
+    max_retries: ${oc.decode:${oc.env:OPENAI_LOADER_MAX_RETRIES, 2}}
+    top_p: ${oc.decode:${oc.env:OPENAI_LOADER_TOP_P, 0.9}}
+    concurrency_limit: ${oc.decode:${oc.env:OPENAI_LOADER_CONCURRENCY_LIMIT, 20}}
 
 ray:
   num_gpus: ${oc.decode:${oc.env:RAY_NUM_GPUS, 0.01}}
