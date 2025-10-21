@@ -89,35 +89,6 @@ In case **`Indexer UI` (A Web interface for intuitive document ingestion, indexi
     # docker compose --profile cpu down
     ```
     </TabItem>
-    <TabItem label="MacOS">
-    :::danger[Important]
-    **`Apple Metal/MPS`** is not currently supported in Docker. Additionally, our implementations of **vLLM** (embeddings) and **Infinity** (reranking) are not optimized for macOS: **`We are working on it`**.
-    :::
-    As an alternative, you can use **Ollama** or **LlamaCpp** to run embeddings locally on macOS using MPS. The embedder is OpenAI-compatible, so you can configure it via the `.env` file.
-
-
-    1. **Disable Docker services for embeddings and reranking**
-      Comment out the relevant services in `docker-compose.yml`.
-
-    2. **Disable the reranker**
-      :::note[Important]
-      Our reranker interface matches the [Infinity](https://github.com/michaelfeil/infinity) API and is not OpenAI-compatible: Current work is being done for that.
-      ```bash
-      // .env
-      RERANKER_ENABLED=False
-      ```
-      :::
-
-    3. **Run an external embedding service**
-      Deploy an embedding service with **LlamaCpp** or **Ollama** locally. Then, configure your `.env` with the following variables:
-
-      ```bash
-      // .env
-      EMBEDDER_MODEL_NAME=...
-      EMBEDDER_BASE_URL=...
-      EMBEDDER_API_KEY=...
-      ```
-    </TabItem>
   </Tabs>
 
 
