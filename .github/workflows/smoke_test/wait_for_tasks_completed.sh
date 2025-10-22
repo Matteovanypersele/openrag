@@ -25,6 +25,9 @@ do
     break
   fi
 
+  curl -fs "${ADDR}:${PORT}/queue/info"
+  curl -fs "${ADDR}:${PORT}/queue/tasks"
+
   echo "Waiting: ${tc} tasks completed, ${tf} tasks failed on ${ADDR}:${PORT}"
   sleep 10s
 done
