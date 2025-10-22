@@ -1,0 +1,47 @@
+Mammals are in the class Mammalia. They are a group of vertebrate animals. They have fur or hair and very precise temperature regulation.
+With the exception of the monotremes, all mammals bear live young. Unlike other vertebrates, they are the only animals that produce milk for their young through their mammary glands. Parental care of the young is universal among mammals, sometimes for long periods.
+Mammals became the dominant land animals after non-bird dinosaurs were eliminated. Recent work helped to explain their success: epigenetics seems to have started in early mammals.
+Main characteristics.
+Reproductive cycle.
+Most marsupial and eutherian mammals have a reproductive cycle known as the oestrous cycle (U.S: estrous cycle). Females are sexually active in the oestrous stage, when they are 'on heat' for a few days each month. If an ovum is not fertilized, the endometrium (uterus lining) is resorbed. Oestrus cycles may occur once or twice a year, or many times a year. Each type of mammals has its own frequency.
+Humans and primates, are quite different. They have a menstrual cycle. In this case, females are sexually receptive at any time, but only fertile when an ovum is released from an ovary. In this case, the endometrium (if not needed for an fertilised egg) is discarded. In this system, eggs are released from the ovaries mostly in the middle of the cycle, away from the menstrual period. This ovulation is 'concealed', meaning, it is not obvious when it occurs. This process, so it is thought, tends to keep the male and female together, which is unusual in mammals with the oestrous cycle. Keeping males and females together is related to the long learning period of primates.
+Skeleton.
+One diagnostic feature of mammals is the lower jaw. Unlike earlier forms, it is a single bone, the dentary. This is one feature which can be seen in fossils, or at least those which are complete enough to have the lower jaw. Another diagnostic feature is the ear ossicles. Mammals have three little bones in their inner ear. These ear ossicles are bones which were, long ago, part of the lower jaw in early proto-mammals.
+There are quite a number of other features in the skull and limbs, so that it is usually possible to identify and describe a mammal from its skeleton alone, or even a partial skeleton.
+Neocortex and behaviour.
+Another diagnostic feature is the neocortex of the brain, which no other vertebrate has. This is involved in the kind of flexible behaviour and learning typical of mammals. Reptiles and birds have much of their behaviour controlled by "inherited behaviour chains", which roughly translates as "instincts". Almost all animals can do some learning, but mammals do far more than other vertebrates. Their behaviour is much more flexible than lizards, for example, and that is made possible by their neocortex.
+Other things in the life of mammals seem to be connected with this flexibility and learning. Play is a kind of early learning period in which, according to one theory, mammals develop skills which they will need in life. All mammalian young play, and this is very obvious in the more intelligent mammals (primates, cats).
+The emotions of mammals are very noticeable, and rather similar to ours. It is possible, and quite common, for humans to have a friendly relationship with another mammal. It is quite impossible for a human to have any kind of relationship with a snake or a gecko (for example). This is because the reptile simply does not have the same basic emotions as a human.
+Primarily nocturnal.
+Once, most mammals were nocturnal. Today, many (more than two-thirds) are still nocturnal. It makes a lot of sense when you realise that the daytime was ruled by dinosaurs for so long, Primates (except humans) sleep at night in trees. They are active during the daytime, and some come out onto more open ground. 
+Baboons (and humans!) are rather special in that they come out onto the grassland in the daytime. Humans are fully daytime animals, and can see colours quite well (nocturnal animals have poor colour vision, but can see in the dusk.).
+Other items.
+There are about 50 characters which are typical of mammals: some of the most important are discussed above. A few more examples will make it clear that mammals are very different from reptiles and birds:
+In the language of cladistics, the 50 unique characters are apomorphies which prove that mammals are a clade descended from a common ancestor.
+Main groups.
+All mammals feed milk to their young, and protect and look after them.
+The vast majority of mammal species give birth to live young, these are the placental mammals, most of which are classified as Eutheria and a small number are classified as marsupials.
+Marsupials are mammals with pouches to carry young in, like the kangaroo.
+There are only five species (the monotreme mammals) that lay eggs, the duck-billed platypus "Ornithorhynchus", and four species of spiny anteater "Echidna". The monotremes are confined to Australia and New Guinea, and are the sole survivors of an earlier group of mammals.
+Modes of life.
+By number of species, mammals (with 5488 species), are not the most successful vertebrates. Birds, with about 10,000 species have nearly twice as many, and reptiles have just as many as birds. Fish have even more species. There are 27,000 species of fish, of which nearly 26,000 are bony fish. However, the word "fish" covers more than one class of animal.
+Most zoologists regard mammals as a successful group of animals. One reason is that they are successful in all habitats on Earth. In the air, in the water, in forests, in the colder regions of the world, and above all on grasslands, where they are outstandingly successful.
+In the air, the bats (Chiroptera) are the mammalian order with the most species. They 'own' the nighttime, since birds are largely diurnal (daytime) animals. Bats are hugely successful, mostly as nighttime predators of insects.
+Seagoing mammals, the Cetacea and the pinnipeds, are very successful and significant predators. This includes the whales, seals, walrus, dolphins and others.
+The terrestrial mammals are fewer in number of species than lizards, but they are huge in individual numbers, and far more important in the life of the terrestrial biomes. Their ability to move from place to place and adapt has made them a most effective group. Many mammals live in cold places. These mammals have thick hair or blubber to keep them warm. Others may live in rainforests. On land the rodents (rats, mice) are hugely successful, more common in numbers than any other mammals. Large mammals on land have been hunted to extinction in some parts of the world, but the ones which remain are now better protected.
+Last, but certainly not least, are the primates. Their natural habitat, with few exceptions, are the forests. Most live in the trees, with hands that grasp, good colour vision, and intelligence. In the Pliocene period some moved out onto the savannas as grassland replaced forests. Mankind is the result of this shift into the savannas.
+Taxonomy.
+The evolutionary relationships among land vertebrates is as follows:
+This sort of classification is not traditional, but it does reflect our knowledge of palaeontology and evolution.
+Standardized textbook classification.
+A somewhat standardized classification system has been adopted by most current mammalogy classroom textbooks. It is based on living animals. The following taxonomy of extant and recently extinct mammals is from Vaughan et al. 2000.
+Class Mammalia
+List of living orders.
+Mammals can be divided in a number of orders:
+Debate on the meaning of "mammalia".
+Because two quite different dates are given in the taxobox, an explanation is needed. Rowe defines mammals as "the taxon originating with the most recent common ancestor of extant (living) Monotremata and Theria". That puts the emphasis heavily on living mammals, where, as Rowe points out, the database of characters is extensive.
+Kemp explains the problem with that approach: "If the definition of a mammal is based rigorously upon possession of all the characters of living mammals, then some fossil forms that are extremely mammalian in anatomy... are excluded".
+"An altogether different perspective on defining Mammalia is based on traditional palaeobiological practice. An arbitrary decision is made about which characters to select as defining characters... Characters deemed appropriate are those reflecting the... fundamental mammalian biology. The essence of mammalian life is to be found in their endothermic temperature physiology, greatly enlarged brain, dentition capable of chewing food, highly agile, energetic locomotion, and so on. The organisms that achieved this grade of overall organisation are deemed to be Mammalia... Around the end of the Triassic period, about 205 mya, a number of fossils are found of very small animals that have [most] of the skeletal characters of modern mammals".
+This difference in outlook explains the difference in the two dates given in the taxobox.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

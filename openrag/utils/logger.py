@@ -28,7 +28,7 @@ def get_logger():
     logger.add(
         sys.stderr,
         format=formatter,
-        level=config.verbose.level,  # INFO or DEBUG
+        level=config.verbose.level,
     )
 
     # JSON logs to file for later use (e.g. Grafana ingestion)

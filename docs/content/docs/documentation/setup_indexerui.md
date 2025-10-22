@@ -33,16 +33,14 @@ git submodule foreach 'git checkout main && git pull'
 
 To enable the Indexer UI, add the following environment variables to your configuration:
 
-* Replace **`X.X.X.X`** with `localhost` (for local use) or your server IP
+* Replace **`X.X.X.X`** with `localhost` (for local deployment) or your server IP
 * Replace **`APP_PORT`** with your FastAPI port (default: 8080)
 * Set the **base URL of the Indexer UI** (required to prevent CORS issues). Replace **`INDEXERUI_PORT`** accordingly
 * Set the **base URL of your FastAPI backend** (used by the frontend). Replace **`APP_PORT`** accordingly
 
 ```bash
-// .env
-INDEXERUI_COMPOSE_FILE=extern/indexer-ui/docker-compose.yaml  # Path to the docker-compose file
-VITE_INCLUDE_CREDENTIALS=false # Set to true if FastAPI authentication is enabled
+INCLUDE_CREDENTIALS=false # Set to true if FastAPI authentication is enabled
 INDEXERUI_PORT=8060 # Port for the Indexer UI (default: 3042)
 INDEXERUI_URL='http://X.X.X.X:INDEXERUI_PORT'
-VITE_API_BASE_URL='http://X.X.X.X:APP_PORT'
+API_BASE_URL='http://X.X.X.X:APP_PORT'
 ```

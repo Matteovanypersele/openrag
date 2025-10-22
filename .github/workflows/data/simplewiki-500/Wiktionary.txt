@@ -1,0 +1,8 @@
+Wiktionary is a wiki-based project to develop a multilingual online dictionary, or a group of meanings for words, in the form of a wiki. There are many languages of Wiktionary. Wiktionary is also a thesaurus. Wiktionary is run by the Wikimedia Foundation, which also runs Wikipedia. The English Wiktionary currently has over 7.3 million pages and 4.0 million users. Much like Wikipedia, the Wiktionary is run in several different languages that can be selected from its main page. These include the Simple English Wiktionary.
+Logo.
+In 2006, there was a vote for the change of the logo of Wiktionary. The original logo of only words was replaced. However, there were very few people who voted in this contest. Therefore, smaller wikis used the newer logo but the English Wiktionary stayed with the same logo.
+In 2009, there was a second contest for a newer logo "(pictured)". This was a step to make all the Wiktionaries to have the same logo on all projects. However, the English Wiktionary still did not use the new logo. The Simple English Wiktionary voted on the new logo on November 30, 2010 and the community decided the new logo to use it as their logo. However, no changes were made to the logo and the discussion was thus forgotten.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;
+Other websites.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

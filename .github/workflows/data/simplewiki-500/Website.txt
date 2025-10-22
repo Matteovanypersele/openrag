@@ -1,0 +1,16 @@
+A website is a set of webpages that are joined. People look at websites with a computer of some kind, which can sometimes be the computer inside a mobile phone or a television. The websites are kept on computers called web servers.
+Overview.
+There is almost always a single homepage which has links to other pages that are part of that website. Sometimes it has links to pages that are part of other websites as well. (Note that net jargon uses the word "site", which also means a physical place in the real world, to mean a web URL). A home page serves as the introduction page of a website.
+Some websites are used to advertise or sell things. Some websites can also be used to talk to other people. Many websites are good for looking up information on the computer. A blog is a website where the location of the material is less relevant than who writes it, and which is more focused on dialogue. Very often the people who use blogs dislike the word "site" since it implies a controlled place.
+Accessing websites.
+Users can access any website by using a URL. This is the website address which is shown near the top of the web browser. The homepage and the rest of the site usually have the same words at the start of the URL — for example, pages at the Simple English Wikipedia always start "http://simple.wikipedia.org/..." but are different after that. However, if a person does not buy a domain name, the website could be an IP Address. An example of an IP address is 172.217.13.228.
+Appearance.
+Web sites are usually shown in HTML (Hyper Text Markup Language) but are not always written or kept that way - some use WAP and others use XML.
+Website builder software is usually a collection of software tools that allow the construction of websites without manual code editing. Several hosted website services have website builder software built-in.
+Types.
+There are many different types of website based on their purpose and the type of organisation they are created for.
+Domain types.
+Websites have different kinds of domain endings, which are the two-or-three letter pieces after the period (".") on the website. Different website owners use different domain endings for different purposes.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

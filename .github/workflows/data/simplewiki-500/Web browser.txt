@@ -1,0 +1,9 @@
+A web browser is a computer program application for reading pages of the World Wide Web. Since the late 1990s, most personal computers and mobile phones and other mobile devices have a browser.
+Web browsers are used by people to find and look at websites on the Internet. The first web browser was created in 1990. Many web browsers are available for free. All web browsers can go to websites but each browser has good things and bad things about it. For example, some browsers focus on data security and keeping computers safe from viruses. Other browsers are made so that web pages appear on-screen faster.
+Some popular web browsers include:
+Other browsers are:
+Web browsers and HTML.
+A webpage is one page of a website. Every web page has a web address.
+A web browser goes to a web page using a web address. It downloads the HTML file stored at that address. Its browser engine then reads and translates the HTML file. The browser will then show the webpage on the screen as text, images and clickable links. 
+Other websites.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

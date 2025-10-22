@@ -62,10 +62,10 @@ class AppState:
 
 # Read the token from env (or None if not set)
 AUTH_TOKEN: Optional[str] = os.getenv("AUTH_TOKEN")
-
-INDEXERUI_URL: Optional[str] = os.getenv("INDEXERUI_URL", None)
-INDEXERUI_COMPOSE_FILE = os.getenv("INDEXERUI_COMPOSE_FILE", None)
 INDEXERUI_PORT: Optional[str] = os.getenv("INDEXERUI_PORT", "3042")
+INDEXERUI_URL: Optional[str] = os.getenv(
+    "INDEXERUI_URL", f"http://localhost:{INDEXERUI_PORT}"
+)
 WITH_CHAINLIT_UI: Optional[bool] = (
     os.getenv("WITH_CHAINLIT_UI", "true").lower() == "true"
 )
@@ -157,15 +157,11 @@ async def openrag_exception_handler(request: Request, exc: OpenRAGError):
 
 
 # Add CORS middleware
-if INDEXERUI_URL and INDEXERUI_COMPOSE_FILE:
-    allow_origins = [
-        "http://localhost:3042",
-        "http://localhost:5173",
-        INDEXERUI_URL,
-        f"http://localhost:{INDEXERUI_PORT}",
-    ]
-else:
-    allow_origins = ["*"]
+allow_origins = [
+    "http://localhost:3042",
+    "http://localhost:5173",
+    INDEXERUI_URL,
+]
 
 app.add_middleware(
     CORSMiddleware,

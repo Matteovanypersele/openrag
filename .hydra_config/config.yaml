@@ -56,8 +56,7 @@ map_reduce:
   map_reduce_n_docs: ${oc.decode:${oc.env:MAP_REDUCE_N_DOCS, 10}} # Number of documents to use in map-reduce
 
 verbose:
-  verbose: true
-  level: DEBUG
+  level: ${oc.env:LOG_LEVEL, DEBUG}
 
 paths:
   prompts_dir: ${oc.env:PROMPTS_DIR, ../prompts/example1}

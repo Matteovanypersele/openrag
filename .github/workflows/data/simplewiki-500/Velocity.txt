@@ -1,0 +1,26 @@
+Velocity is a measure of how fast something moves in a particular direction. To define it needs both magnitude and direction. If an object moves east at 9 metres per second (9 m/s), then its velocity is 9 m/s to the east.
+The idea behind this is that speed does not tell us in which direction the object moves in a given frame of reference. Speed is one part of velocity, direction is the other part. Depending on the frame of reference, the velocity can be defined with many mathematical concepts required for making the correct analysis.
+Velocity in one-dimensional motion.
+Average velocity.
+To calculate the average velocity of an object, we divide its displacement (its change of position) by the time it took to change position.
+formula_1
+For example, if an object moves 20 meters (m) to the left in 1 seconds (s), its velocity (v) would be equal to:
+formula_2
+Instantaneous velocity.
+Unlike average velocity, the instantaneous velocity tells us how fast something is moving at only one time, because velocity can only change with time.
+formula_3
+Velocity in two-dimensional motion.
+The concept of velocity allows us to consider two different means of calculating the velocity. Two-dimensional motion "requires" us to use vector notation to define the physical quantities found throughout the kinematics.
+Distinction between average velocity and instantaneous velocity regarding two dimensional motion.
+Average velocity.
+To calculate the average velocity of an object, we divide its displacement (its change of position) by the time it took to change position.
+formula_4
+where: formula_5is the total distance traveled in a given time interval formula_6. Each of these quantities can be calculated by substracting two different values intertwined within the given quantity, hence formula_7give the desired formula_8.
+Instantaneous velocity.
+Contrary to average velocity, the instantaneous velocity tells us the rate of change at which a given object is moving along a certain path at a given instance of time, which usually tends to be infinitesimally small.
+formula_9
+When formula_10, we can see that formula_11. Taking that into consideration we can conceptualize this rate of change between displacement vector and interval of time using mathematical analysis "(most notably-" "Calculus)"
+Relative velocity.
+Velocity can also be measured by comparing the motion of two objects. This is called relative velocity. The second object is called the reference frame. To find the relative velocity, subtract the velocity of the reference frame from the velocity of the first object. For example, Earth moves at 67,000 miles per hour around the Sun. Usually, we do not care about this motion. So we subtract the vector that represents Earth's motion from the total motion.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

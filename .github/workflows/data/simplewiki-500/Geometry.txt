@@ -1,0 +1,12 @@
+Geometry (from Ancient Greek: Γεωμετρία (romanized: "Geometria" (English: "Land measurement") derived from Γη (romanized: Ge; English: "Earth" or "land") and also derived from Μέτρον) (romanized: "Métron"; English: "A measure")) is a branch of mathematics that studies the size, shapes, positions and dimensions of things. We can only see shapes that are flat (2D) or solid (3D), but mathematicians (people who study math) are able to study shapes that are 4D, 5D, 6D, and so on.
+Squares, circles and triangles are some of the simplest shapes in flat geometry. Cubes, cylinders, cones and spheres are simple shapes in solid geometry.
+Uses.
+Plane geometry can be used to measure the area and perimeter of a flat shape. Solid geometry can measure a solid shape's volume and surface area.
+Geometry can be used to calculate the size and shape of many things. For example, geometry can help people find:
+Origins.
+Geometry is one of the oldest branches of mathematics. Geometry began as the art of surveying of land so that it could be shared fairly between people. The word "geometry" is from a Greek word that means "to measure the land". It has grown from this to become one of the most important parts of mathematics. The Greek mathematician Euclid wrote the first book about geometry, a book called "The Elements".
+Non-Euclidean geometry.
+Plane and solid geometry, as described by Euclid in his textbook Elements, is called "Euclidean Geometry". This was simply called "geometry" for centuries. In the 19th century, mathematicians created several new kinds of geometry that changed the rules of Euclidean geometry. These and earlier kinds were called "non-Euclidean" (not created by Euclid). For example, hyperbolic geometry and elliptic geometry come from changing Euclid's parallel postulate.
+Non-Euclidean geometry is more complicated than Euclidean geometry but has many uses. Spherical geometry for example is used in astronomy and cartography.
+Examples.
+Geometry starts with a few simple ideas that are thought to be true, called axioms. Such as:
