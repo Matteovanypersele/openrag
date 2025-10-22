@@ -52,9 +52,9 @@ if PERSISTENCY:
 
 if AUTH_TOKEN:
     if not CHAINLIT_AUTH_SECRET:
-        logger.warning(
-            "`CHAINLIT_AUTH_SECRET` is not set a default value will be used. Not recommended for production."
-        )
+        # logger.warning(
+        #     "`CHAINLIT_AUTH_SECRET` is not set a default value will be used. Not recommended for production."
+        # )
         os.environ["CHAINLIT_AUTH_SECRET"] = (
             "default_secret_for_openrag_ui"  # Set default value
         )

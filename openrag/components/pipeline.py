@@ -21,26 +21,23 @@ class RAGMODE(Enum):
 
 
 class RetrieverPipeline:
-    def __init__(self, config, logger=None) -> None:
+    def __init__(self, config) -> None:
         self.config = config
-        self.logger = logger
 
         # retriever
-        self.retriever: ABCRetriever = RetrieverFactory.create_retriever(
-            config=config, logger=self.logger
-        )
+        self.retriever: ABCRetriever = RetrieverFactory.create_retriever(config=config)
 
         # reranker
         self.reranker = None
         self.reranker_enabled = config.reranker["enable"]
-        self.logger.debug("Reranker", enabled=self.reranker_enabled)
+        logger.debug("Reranker", enabled=self.reranker_enabled)
         self.reranker_top_k = int(config.reranker["top_k"])
 
         # map reduce
         self.map_reduce_n_docs = self.config.map_reduce["map_reduce_n_docs"]
 
         if self.reranker_enabled:
-            self.reranker = Reranker(self.logger, config)
+            self.reranker = Reranker(logger, config)
 
     async def retrieve_docs(
         self, partition: list[str], query: str, use_map_reduce: bool = False
@@ -63,20 +60,19 @@ class RetrieverPipeline:
 
 
 class RagPipeline:
-    def __init__(self, config, logger=None) -> None:
+    def __init__(self, config) -> None:
         self.config = config
-        self.logger = logger
 
         # retriever pipeline
-        self.retriever_pipeline = RetrieverPipeline(config=config, logger=self.logger)
+        self.retriever_pipeline = RetrieverPipeline(config=config)
 
         self.rag_mode = config.rag["mode"]
         self.chat_history_depth = config.rag["chat_history_depth"]
 
-        self.llm_client = LLM(config.llm, self.logger)
-        self.vlm_client = LLM(config.vlm, self.logger)
+        self.llm_client = LLM(config.llm, logger)
+        self.vlm_client = LLM(config.vlm, logger)
         self.contextualizer = AsyncOpenAI(
-            base_url=config.vlm["base_url"], api_key=config.vlm["api_key"]
+            base_url=config.llm["base_url"], api_key=config.llm["api_key"]
         )
         self.max_contextualized_query_len = config.rag["max_contextualized_query_len"]
 
@@ -104,7 +100,7 @@ class RagPipeline:
                 }
 
                 response = await self.contextualizer.chat.completions.create(
-                    model=self.config.vlm["model"],
+                    model=self.config.llm["model"],
                     messages=[
                         {"role": "system", "content": QUERY_CONTEXTUALIZER_PROMPT},
                         {
