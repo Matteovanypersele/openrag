@@ -6,9 +6,9 @@ from urllib.parse import urlparse
 import chainlit as cl
 import httpx
 from chainlit.context import get_context
+from consts import PARTITION_PREFIX
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-from consts import PARTITION_PREFIX
 from utils.logger import get_logger
 
 load_dotenv()
@@ -19,15 +19,28 @@ AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")
 
 # Chainlit authentication
 CHAINLIT_AUTH_SECRET = os.environ.get("CHAINLIT_AUTH_SECRET")
-CHAINLIT_USERNAME = os.environ.get("CHAINLIT_USERNAME", "OpenRAG")
-CHAINLIT_PASSWORD = os.environ.get("CHAINLIT_PASSWORD", "OpenRAG2025")
 
-headers = {
-    "accept": "application/json",
-    "Content-Type": "application/json",
-}
-if AUTH_TOKEN:
-    headers["Authorization"] = f"Bearer {AUTH_TOKEN}"
+# Application internal URL (used to call the API from Chainlit)
+port = os.environ.get("APP_iPORT", "8080")
+INTERNAL_BASE_URL = f"http://localhost:{port}"  # Default fallback URL
+
+commands = [
+    {
+        "id": "DeepSearch",
+        "icon": "brain-cog",
+        "description": "This uses a custom DeepSearch RAG mechanism (Map & Reduce) to handle complex queries.\nSlower but gives accurate answers.\nUse in an empty context as it consumes more tokens.",
+    },
+]
+
+
+def get_headers(api_key):
+    headers = {
+        "Content-Type": "application/json",
+        "accept": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
 
 
 if PERSISTENCY:
@@ -37,23 +50,41 @@ if PERSISTENCY:
         pass
 
 
-if CHAINLIT_AUTH_SECRET:
+if AUTH_TOKEN:
+    if not CHAINLIT_AUTH_SECRET:
+        # logger.warning(
+        #     "`CHAINLIT_AUTH_SECRET` is not set a default value will be used. Not recommended for production."
+        # )
+        os.environ["CHAINLIT_AUTH_SECRET"] = (
+            "default_secret_for_openrag_ui"  # Set default value
+        )
 
     @cl.password_auth_callback
-    def auth_callback(username: str, password: str):
-        # Fetch the user matching username from your database
-        # and compare the hashed password with the value stored in the database
-        if (username, password) == (CHAINLIT_USERNAME, CHAINLIT_PASSWORD):
+    async def auth_callback(username: str, password: str):
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(timeout=httpx.Timeout(4 * 60.0))
+            ) as client:
+                response = await client.get(
+                    url=f"{INTERNAL_BASE_URL}/users/info",
+                    headers=get_headers(password),
+                )
+                response.raise_for_status()  # raises exception for 4xx/5xx responses
+                data = response.json()
+
             return cl.User(
-                identifier=CHAINLIT_USERNAME,
-                metadata={"role": "admin", "provider": "credentials"},
+                identifier=data.get("display_name", "user"),
+                metadata={
+                    "role": "admin" if data.pop("is_admin") else "user",
+                    "provider": "credentials",
+                    "api_key": password,
+                    "extra": data,
+                },
             )
-        else:
+
+        except Exception as e:
+            logger.exception("Authentication failed", error=str(e))
             return None
-
-
-port = os.environ.get("APP_iPORT", "8080")
-INTERNAL_BASE_URL = f"http://localhost:{port}"  # Default fallback URL
 
 
 def get_external_url():
@@ -65,11 +96,11 @@ def get_external_url():
 
 
 @cl.set_chat_profiles
-async def chat_profile():
-    client = AsyncOpenAI(
-        base_url=f"{INTERNAL_BASE_URL}/v1",
-        api_key=AUTH_TOKEN if AUTH_TOKEN else "sk-1234",
+async def chat_profile(current_user: cl.User):
+    api_key = (
+        current_user.metadata.get("api_key", "sk-1234") if current_user else "sk-1234"
     )
+    client = AsyncOpenAI(base_url=f"{INTERNAL_BASE_URL}/v1", api_key=api_key)
     try:
         output = await client.models.list()
         models = output.data
@@ -87,7 +118,7 @@ async def chat_profile():
                     markdown_description=description_template.format(
                         name=m.id, partition=partition
                     ),
-                    icon="public/favicon.svg",
+                    icon="/public/favicon.svg",
                 )
             )
         return chat_profiles
@@ -98,15 +129,19 @@ async def chat_profile():
 @cl.on_chat_start
 async def on_chat_start():
     cl.user_session.set("messages", [])
+    user = cl.user_session.get("user")
+    api_key = user.metadata.get("api_key", "sk-1234") if user else "sk-1234"
     logger.debug("New Chat Started", internal_base_url=INTERNAL_BASE_URL)
     try:
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(timeout=httpx.Timeout(4 * 60.0)), headers=headers
+            timeout=httpx.Timeout(timeout=httpx.Timeout(4 * 60.0))
         ) as client:
             response = await client.get(
-                url=f"{INTERNAL_BASE_URL}/health_check", headers=headers
+                url=f"{INTERNAL_BASE_URL}/health_check",
+                headers=get_headers(api_key),
             )
             print(response.text)
+        await cl.context.emitter.set_commands(commands)
     except Exception as e:
         logger.exception("An error occured while checking the API health", error=str(e))
         await cl.Message(
@@ -114,7 +149,7 @@ async def on_chat_start():
         ).send()
 
 
-async def __fetch_page_content(chunk_url):
+async def __fetch_page_content(chunk_url, headers=None):
     async with httpx.AsyncClient() as client:
         response = await client.get(chunk_url, headers=headers)
         response.raise_for_status()  # raises exception for 4xx/5xx responses
@@ -122,7 +157,7 @@ async def __fetch_page_content(chunk_url):
         return data.get("page_content", "")
 
 
-async def __format_sources(metadata_sources, only_txt=False):
+async def _format_sources(metadata_sources, only_txt=False, api_key=None):
     external_url = (
         get_external_url()
     )  # used to override the base URL when the front-end requests a file resource
@@ -130,12 +165,14 @@ async def __format_sources(metadata_sources, only_txt=False):
         return None, None
 
     d = {}
+    headers = get_headers(api_key)
     for i, s in enumerate(metadata_sources):
         filename = Path(s["filename"])
         file_url = s["file_url"]
         file_url = file_url.replace(
             INTERNAL_BASE_URL, external_url
         )  # put the correct base url
+        file_url = f"{file_url}?token={api_key}"  # add token for authentication
         page = s["page"]
         source_name = f"{filename}" + (
             f" (page: {page})"
@@ -144,7 +181,9 @@ async def __format_sources(metadata_sources, only_txt=False):
         )
 
         if only_txt:
-            chunk_content = await __fetch_page_content(chunk_url=s["chunk_url"])
+            chunk_content = await __fetch_page_content(
+                chunk_url=s["chunk_url"], headers=headers
+            )
             elem = cl.Text(content=chunk_content, name=source_name, display="side")
         else:
             match filename.suffix.lower():
@@ -162,12 +201,14 @@ async def __format_sources(metadata_sources, only_txt=False):
                 case ".mp3":
                     elem = cl.Audio(name=source_name, url=file_url, display="side")
                 case _:
-                    chunk_content = await __fetch_page_content(chunk_url=s["chunk_url"])
+                    chunk_content = await __fetch_page_content(
+                        chunk_url=s["chunk_url"], headers=headers
+                    )
                     elem = cl.Text(
                         content=chunk_content, name=source_name, display="side"
                     )
 
-            d[source_name] = elem
+        d[source_name] = elem
 
     source_names = list(d.keys())
     elements = list(d.values())
@@ -179,9 +220,11 @@ async def __format_sources(metadata_sources, only_txt=False):
 async def on_message(message: cl.Message):
     messages: list = cl.user_session.get("messages", [])
     model: str = cl.user_session.get("chat_profile")
+    user = cl.user_session.get("user")
+    api_key = user.metadata.get("api_key") if user else "sk-1234"
     client = AsyncOpenAI(
         base_url=f"{INTERNAL_BASE_URL}/v1",
-        api_key=AUTH_TOKEN if AUTH_TOKEN else "sk-1234",
+        api_key=api_key,
     )
 
     messages.append({"role": "user", "content": message.content})
@@ -191,6 +234,9 @@ async def on_message(message: cl.Message):
         "temperature": 0.2,
         "stream": True,
         "frequency_penalty": 0.4,
+        "metadata": {
+            "use_map_reduce": message.command == "DeepSearch",
+        },
     }
 
     async with cl.Step(name="Searching for relevant documents..."):
@@ -218,7 +264,9 @@ async def on_message(message: cl.Message):
             cl.user_session.set("messages", messages)
 
             # Show sources
-            elements, source_names = await __format_sources(sources)
+            elements, source_names = await _format_sources(
+                sources, api_key=api_key, only_txt=False
+            )
             msg.elements = elements if elements else []
             if source_names:
                 s = "\n\n" + "-" * 50 + "\n\nSources: \n" + "\n".join(source_names)

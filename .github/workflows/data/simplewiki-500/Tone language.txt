@@ -1,0 +1,13 @@
+A tonal language or tone language is a language in which words can differ by tones (like pitches in music) in addition to consonants and vowels.
+Many languages, including Mandarin, Cantonese, Vietnamese, Thai, Lao, Hmong, Meitei, Punjabi, Chittagonian, Noakhali, Yorùbá, Igbo, Luganda, , Lingála, Cilubà, and Cherokee are tonal. Other languages, including Indo-European languages such as English and Hindi, are not considered tonal languages but can use intonation in different ways.
+In some languages, pitch accent is important instead. A word's meaning can then change if a different syllable is stressed. Examples include Ancient Greek, Hebrew, Swedish, Norwegian, Serbo-Croatian, Lithuanian, and some Asian languages like Persian, Turkish, Mongolian, Japanese, Korean, and Khmer. However, pitch accent is different from tones.
+Some tones may sound alike to people who do not speak a tone language. They are the most difficult part of learning a tone language for those people.
+Example.
+In Mandarin, the most famous example is ""mā má mǎ mà" (), " which has four different words, which are pronounced in exactly the same way but with four different tones. If numbers identify the tones, they can be written m"a1 ma2 ma3 ma4", which means "mom hemp horse scold." Some ways of romanization mark each tone by a different spelling; "ma1 ma2 ma3 ma4" in Pinyin would be written "ma mha maa mah" in Gwoyeu Romatzyh. Most use numbers or accent marks ("mā má mǎ mà" in Pinyin). There is a passage called (). It has 92 characters, all of which read the same way in Mandarin ("shi") but with different tones.
+Mandarin does not have many syllables. The words for "mother," "hemp," "horse," "scold," and a word put at the end of sentences to make it a question are all pronounced "ma:"
+Mandarin has "first tone," "second tone," "third tone," "fourth tone," and "neutral tone." Other Chinese dialects have more tones, with some as many as twelve.
+Tonal markings.
+Vietnamese and pinyin use accents as the tone marks for the Latin alphabet. Each accent shows an altered sound for the syllable. Most syllables have only one tone marking, but the letters in the syllable can be altered by other markings. Syllables usually form one word in un-hyphenated compound words.
+Pinyin may have style differences because it is made to help Westerners. On the other hand, Vietnamese has a national script that always has the same style.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

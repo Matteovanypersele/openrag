@@ -1,0 +1,51 @@
+Zinc, sometimes called spelter, is a chemical element. It is in the group of metals called the transition metals. It is sometimes considered a post-transition metal. Its symbol on the periodic table is "Zn". Zinc is the 30th element on the periodic table, and has an atomic number of 30. Zinc has a mass number of 65.38. It contains 30 protons and 30 electrons. In total, 29 isotopes of zinc are known, and five of these occur in nature. Some isotopes are radioactive. Their half-lives are between 40 milliseconds for 57Zn and 5x1018 years for 70Zn.
+Zinc is a metal that is mostly used for galvanizing and batteries. It is the fourth most common metal used by people.
+Properties.
+Physical properties.
+Zinc is a shiny bluish grey metal. When it has just been cut, zinc has a whitish-grey color. If it is exposed to air, it will not stay shiny for long. Its melting point is (), and its boiling point is (). This temperature is lower than most transition metals but higher than tin or lead. It can be melted on a cooking stove. It boils at a low temperature for a metal. It is not magnetic. When heated a little, it becomes very flexible. If it is heated more, it becomes very brittle. It forms alloys easily with other metals.
+Chemical properties.
+Zinc is a reactive metal. It is about as reactive as aluminium and more reactive than most of the more common metals, such as iron, copper, nickel, and chromium. It is less reactive than magnesium. Zinc can react with acids, bases, and nonmetals. It does not rust in air, though. A coating of zinc oxide and zinc carbonate forms on the surface of the zinc when it is in air. This coating stops corrosion. Acids can dissolve this coating and react with the zinc metal. This reaction of zinc with an acid makes a zinc(II) salt such as zinc chloride and hydrogen gas. This is a very common chemical reaction. The reaction below is the reaction with hydrochloric acid.
+Zn + 2HCl → ZnCl2 + H2
+Zinc can burn when powdered or in small pieces to make zinc oxide, a white powder. The flame is bright blue-green.
+ 2 Zn + O2 → 2 ZnO
+Zinc oxide can dissolve in strong bases. This reaction happens in some batteries that have zinc in them.
+ ZnO + H2O + 2 OH- → Zn(OH)42-.
+Zinc is a chalcophile. This means that it would rather react with sulfur and elements below it on the periodic table than oxygen. That is why zinc sulfide is the most common zinc ore, not zinc oxide.
+Chemical compounds.
+Zinc can make chemical compounds with other elements. These chemical compounds are only in one oxidation state: +2. A +1 compound has been found but it is hard to make. There are no other oxidation states other than +1 or +2. Most of these compounds have no color. If they have a color, it is not the zinc that is making the color.
+Zinc chloride is one of the most common zinc compounds. They are quite unreactive. They are a little acidic when dissolved in water. They make a green flame when heated in a fire.
+Other zinc compounds are:
+Occurence.
+Five isotopes of zinc are found in nature. 64Zn is the most common isotope, with 48.63% of naturally occurring Zinc. This isotope has a half-life of 4.3x1018 years. This is so long, that its radioactivity can be ignored. Similarly, 70Zn (0.6%), with a half life of 1.3x1016 years is usually considered to not be radioactive. The other isotopes found in nature are 66Zn (28%), 67Zn (4%) and 68Zn (19%).
+Zinc is not found as a metal in the earth's crust. Zinc is only found as zinc compounds. Sphalerite, a mineral that is made of zinc sulfide, is a main ore of zinc. Very little zinc is in the ocean. Zinc ore is normally found with copper and lead ores.
+There are some other zinc ores, such as smithsonite (zinc carbonate) and a zinc silicate mineral. They are less common.
+Preparation.
+The zinc sulfide is concentrated by flotation. There is a detergent that collects the zinc sulfide. The impurities sink to the bottom and are removed. Then the zinc sulfide is heated in air to make zinc oxide and sulfur dioxide.
+2 ZnS + 3 O2 → 2 ZnO + 2 SO2
+The sulfur dioxide is oxidized to sulfur trioxide.
+2 SO2 + O2 → 2 SO3
+The sulfur trioxide reacts with the zinc oxide to make zinc sulfate. This makes a soluble form of zinc which can be processed more.
+SO3 + ZnO → ZnSO4
+The zinc sulfate is purified and electrolyzed. This electrolysis makes oxygen, zinc, and sulfuric acid. This makes a pure zinc that is known as "SHG" or special high grade.
+2 ZnSO4 + 2 H2O → 2 Zn + 2 H2SO4 + O2
+The sulfuric acid is reused in place of the sulfur trioxide to leach more zinc oxide.
+Zinc oxide can also be reduced by carbon to zinc metal and carbon dioxide at high temperatures. This is a blast furnace process similar to how iron is made.
+2 ZnO + C → 2 Zn + CO2
+This form of zinc is cheaper but is not pure.
+Zinc is the fourth most commonly used metal in the world. About 10 million tons are made every year.
+Uses.
+As a metal.
+Zinc is used in electrical batteries. The alkaline cell and the Leclanche cell are the ones that use zinc the most. It becomes oxidized and provides electrons for the battery to run.
+About 59% of zinc is used for corrosion prevention, which includes galvanizing. 47% of the world's zinc is used for galvanizing. This is used to protect another metal, usually iron, from rusting. The zinc coating corrodes instead of the iron. The zinc coating can be placed on the metal in two ways. The metal can be dipped into a pot of melted zinc. The zinc can also be electroplated on to the metal. Dipping lasts longer but has a patchy surface that some do not think looks nice. It is also used in motorboats and pipelines to slow rusting. The motor of a motorboat often has a "bullet" of zinc, that will corrode easily, but will help other metal parts of the motor to stay rust free.
+Zinc is used in alloys. Brass is an alloy of copper and zinc. Brass is the most common zinc alloy. Zinc can form alloys with many other metals. Zinc aluminium is an alloy of zinc and aluminium, which makes good bearings. Commercial bronze has zinc in it. Sometimes cadmium telluride is reacted with zinc to make cadmium zinc telluride, a semiconductor. Nickel silver is another zinc alloy.
+Zinc can be used in the pipes of a pipe organ. An alloy of tin and lead was used in the past. Zinc is used in the US penny, which only has a thin layer of copper. The core is zinc. Older pennies were made completely out of bronze.
+A mixture of powdered zinc and sulfur can be used to propel a model rocket. This reaction makes zinc sulfide, heat, light, and gases. Zinc sheet metal is used to make zinc bars.
+As zinc compounds.
+About 1/4 of zinc is used to make zinc compounds. Zinc oxide can be used for sunscreen or paint pigment. Zinc oxide also is a semiconductor. Zinc chloride is used to preserve wood so it does not rot. Some fungicides have zinc in them. Zinc sulfate is used in dyes and pigments. Zinc sulfide is used in fluorescent bulbs to convert the ultraviolet light to visible light.
+In biology.
+Humans need a little bit of zinc to help their body run well. If they do not get enough zinc in their food, they can get a mineral deficiency. Almost two billion people have a zinc deficiency. Zinc deficiency makes one more easily get infections. Some people say that when we get colds, we should take more zinc. Others say that zinc does not make a difference. There are medicines that one can use when they have a cold. People add tiny amounts of zinc compounds to vitamin pills and cereals to make sure that they get enough zinc. Most single-tablet vitamins have zinc in them. Zinc is found in at least 100 enzymes. It is the second most common transition metal other than iron. Zinc also is used by the brain. The human body contains 2 to 4 grams of zinc. A zinc enzyme helps remove carbon dioxide from blood. Whole wheat has much zinc in it.
+Safety.
+Large amounts of zinc metal are toxic. It can dissolve in stomach acid. When too much zinc is eaten, copper and iron levels go down in the body. Zinc compounds can be corrosive in the stomach. Zinc compounds put in the nose can ruin the sense of smell.
+Zinc ions are very toxic to fish and many things that live in water.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

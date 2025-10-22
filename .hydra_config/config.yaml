@@ -1,7 +1,7 @@
 defaults:
   - _self_  # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
   - chunker: recursive_splitter # markdown_splitter # semantic_splitter # 
-  - retriever: single
+  - retriever: ${oc.env:RETRIEVER_TYPE, single}  # single # multiQuery # hyde
   - rag: ChatBotRag
 
 llm_params: &llm_params
@@ -52,24 +52,37 @@ reranker:
   top_k: ${oc.decode:${oc.env:RERANKER_TOP_K, 5}} # Number of documents to return after reranking. upgrade to 8 for better results if your llm has a wider context window
   base_url: ${oc.env:RERANKER_BASE_URL, http://reranker:${oc.env:RERANKER_PORT, 7997}}
 
-grader:
-  enable: false
+map_reduce:
+  # Number of documents to process in the initial mapping phase
+  initial_batch_size: ${oc.decode:${oc.env:MAP_REDUCE_INITIAL_BATCH_SIZE, 10}}
+  
+  # Number of additional documents to probe when all previous chunks are relevant
+  expansion_batch_size: ${oc.decode:${oc.env:MAP_REDUCE_EXPANSION_BATCH_SIZE, 5}}
+  
+  # Maximum total number of documents (chunks) to process across all iterations
+  max_total_documents: ${oc.decode:${oc.env:MAP_REDUCE_MAX_TOTAL_DOCUMENTS, 20}}
+
+  # Enable debug logging for map & reduce
+  debug: ${oc.decode:${oc.env:MAP_REDUCE_DEBUG, true}}
 
 verbose:
-  verbose: true
-  level: DEBUG
+  level: ${oc.env:LOG_LEVEL, DEBUG}
 
 paths:
-  prompts_dir: ${oc.env:PROMPTS_DIR, ../prompts/example3}
+  prompts_dir: ${oc.env:PROMPTS_DIR, ../prompts/example1}
   data_dir: ${oc.env:DATA_DIR, ../data}
   db_dir: ${oc.env:DB_DIR, /app/db}
   log_dir: ${oc.env:LOG_DIR, /app/logs}
 
-prompt:
-  rag_sys_pmpt: rag_sys_prompt_template.txt
-  contextualizer_pmpt: contextualizer_pmpt.txt
-  chunk_contextualizer_pmpt: chunk_contextualizer_tmpl.txt
-  image_describer: image_captioning.txt
+prompts:
+  sys_prompt: sys_prompt_tmpl.txt
+  query_contextualizer: query_contextualizer_tmpl.txt
+  chunk_contextualizer: chunk_contextualizer_tmpl.txt
+  image_describer: image_captioning_tmpl.txt
+
+  # query templates for different retriever types
+  hyde: hyde.txt
+  multi_query: multi_query_pmpt_tmpl.txt
 
 loader:
   image_captioning: true
@@ -91,7 +104,7 @@ loader:
     txt: TextLoader
     pdf: ${oc.env:PDFLoader, MarkerLoader}  # DoclingLoader # MarkerLoader # PyMuPDFLoader # Custompymupdf4llm
     eml: EmlLoader
-    docx: MarkItDownLoader
+    docx: DocxLoader
     pptx: PPTXLoader
     doc: DocLoader
     png: ImageLoader

@@ -18,7 +18,7 @@ jobs:
   build-and-push-dev-image:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
     steps:
@@ -153,7 +153,7 @@ jobs:
   build-and-push-dev-image-ray:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
     steps:
@@ -182,7 +182,7 @@ jobs:
           else
             VERSION="dev-${DATE}-${SHORT_SHA}"
           fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}-ray" >> $GITHUB_OUTPUT
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta

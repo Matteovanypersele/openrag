@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from components.utils import get_llm_semaphore, load_config, load_sys_template
+from components.prompts import CHUNK_CONTEXTUALIZER
+from components.utils import get_llm_semaphore, load_config
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -20,9 +21,6 @@ from .utils import add_overlap, combine_chunks, combine_md_elements, split_md_el
 
 logger = get_logger()
 config = load_config()
-prompt_paths = Path(config.paths.get("prompts_dir"))
-chunk_contextualizer_pmpt = config.prompt.get("chunk_contextualizer_pmpt")
-CHUNK_CONTEXTUALIZER = load_sys_template(prompt_paths / chunk_contextualizer_pmpt)
 
 
 class BaseChunker(ABC):
@@ -88,9 +86,9 @@ class BaseChunker(ABC):
         try:
             tasks = []
             for i in range(len(chunks)):
-                prev_chunk = chunks[i - 1] if i > 0 else ""
+                prev_chunk = "---\n".join(chunks[max(0, i - 2) : i]) if i > 0 else ""
                 curr_chunk = chunks[i]
-                first_chunks = "\n".join(chunks[:4])
+                first_chunks = "---\n".join(chunks[:2])  # first two chunks
 
                 tasks.append(
                     self._generate_context(
@@ -228,20 +226,21 @@ class RecursiveSplitter(BaseChunker):
         filtered_chunks = []
         prev_page_num = 1
         for chunk, chunk_w_context in zip(chunks, chunks_w_context):
+            if not chunk.strip():  # skip empty chunks
+                continue
+
             page_info = self._get_chunk_page_info(
                 chunk_str=chunk, previous_page=prev_page_num
             )
             start_page = page_info["start_page"]
             end_page = page_info["end_page"]
             prev_page_num = end_page
-
-            if len(chunk.strip()) > 10:
-                filtered_chunks.append(
-                    Document(
-                        page_content=chunk_w_context,
-                        metadata={**metadata, "page": start_page},
-                    )
+            filtered_chunks.append(
+                Document(
+                    page_content=chunk_w_context,
+                    metadata={**metadata, "page": start_page},
                 )
+            )
         log.info("Document chunking completed")
         return filtered_chunks
 
@@ -344,20 +343,21 @@ class SemanticSplitter(BaseChunker):
         filtered_chunks = []
         prev_page_num = 1
         for chunk, chunk_w_context in zip(chunks, chunks_w_context):
+            if not chunk.strip():  # skip empty chunks
+                continue
+
             page_info = self._get_chunk_page_info(
                 chunk_str=chunk, previous_page=prev_page_num
             )
             start_page = page_info["start_page"]
             end_page = page_info["end_page"]
             prev_page_num = end_page
-
-            if len(chunk.strip()) > 10:
-                filtered_chunks.append(
-                    Document(
-                        page_content=chunk_w_context,
-                        metadata={**metadata, "page": start_page},
-                    )
+            filtered_chunks.append(
+                Document(
+                    page_content=chunk_w_context,
+                    metadata={**metadata, "page": start_page},
                 )
+            )
         log.info("Document chunking completed")
         return filtered_chunks
 
@@ -448,20 +448,21 @@ class MarkDownSplitter(BaseChunker):
         filtered_chunks = []
         prev_page_num = 1
         for chunk, chunk_w_context in zip(chunks, chunks_w_context):
+            if not chunk.strip():  # skip empty chunks
+                continue
+
             page_info = self._get_chunk_page_info(
                 chunk_str=chunk, previous_page=prev_page_num
             )
             start_page = page_info["start_page"]
             end_page = page_info["end_page"]
             prev_page_num = end_page
-
-            if len(chunk.strip()) > 10:
-                filtered_chunks.append(
-                    Document(
-                        page_content=chunk_w_context,
-                        metadata={**metadata, "page": start_page},
-                    )
+            filtered_chunks.append(
+                Document(
+                    page_content=chunk_w_context,
+                    metadata={**metadata, "page": start_page},
                 )
+            )
         log.info("Document chunking completed")
         return filtered_chunks
 

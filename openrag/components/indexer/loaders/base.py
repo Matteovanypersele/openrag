@@ -5,7 +5,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Optional, Union
 
-from components.utils import get_vlm_semaphore, load_config, load_sys_template
+from components.prompts import IMAGE_DESCRIBER
+from components.utils import get_vlm_semaphore, load_config
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from PIL import Image
@@ -13,11 +14,6 @@ from utils.logger import get_logger
 
 logger = get_logger()
 config = load_config()
-
-# Load the image description prompt from the configuration
-prompts_dir = Path(config.paths.prompts_dir)
-img_desc_prompt_path = prompts_dir / config.prompt["image_describer"]
-IMAGE_DESCRIPTION_PROMPT = load_sys_template(img_desc_prompt_path)
 
 
 class BaseLoader(ABC):
@@ -140,7 +136,7 @@ class BaseLoader(ABC):
                             "type": "image_url",
                             "image_url": {"url": image_url},
                         },
-                        {"type": "text", "text": IMAGE_DESCRIPTION_PROMPT},
+                        {"type": "text", "text": IMAGE_DESCRIBER},
                     ]
                 )
 

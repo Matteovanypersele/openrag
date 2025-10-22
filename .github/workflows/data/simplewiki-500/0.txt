@@ -1,0 +1,54 @@
+Zero (0) is a unique number. If there are zero things, then there is nothing at all. For example, if a person has zero hats, that means they do not have any hats. The Roman numeral for zero is Ↄ.
+Symbol.
+The symbol for the number zero is "0". It is the additive identity of common numbers. This means that if a number is added to 0, then that number would remain unchanged.
+Mathematics.
+ 3 + 0 = 3
+ 3 − 0 = 3
+ 0 − 3 = −3
+ 3 × 0 = 0
+ 0 ÷ 3 = 0
+ 3 ÷ 0 has an undefined answer.
+ 0 ÷ 0 has an undefined answer.
+The following table includes all of the above examples along with other operations in a condensed, generalized form (where "x" represents any number).
+History.
+The Bakhshali manuscript, discovered in 1881 near Peshawar has been identified as the earliest known text featuring the zero symbol (0), dating back to the 3rd or 4th century CE. The ancient Greeks did not use zero as a number, because they thought numbers represented shapes: To the [ancient] Greeks, who looked upon mathematics from a geometric perspective, zero seemed absurd or unnecessary. When numbers or unknowns represented lengths, and squares represented areas, zero had no place. Why solve a problem that did not exist? If a length is zero, there is no line; if an area is zero, there is no object.The idea of zero was first thought about in Babylon, Indian subcontinent and in Central America at different times. Some places and countries did not know about zero, which may have made it harder for those people to do mathematics. For example, the year after 1 BC is AD 1 (there is no year zero). In India, zero was theorized in the seventh century by the Mathematician Aryabhata.
+Over hundreds of years, the idea of zero was passed from country to country Greece, Persia and the Arab world. The Europeans learned about zero from the Arabs, and stopped using Roman math. This is why numbers are called "Arabic numerals".
+Computer science.
+Zero is almost never used as a place number (Ordinal number). This means that it is not used like 1, 2, or 3 to indicate the order, or place, of something, like 1st, 2nd, or 3rd. An exception to this is seen in many programming languages. Some other things about zero:
+Any number divided by itself equals one, except if that number is zero. In symbols:
+0 ÷ 0 = undefined
+Other applications.
+In time, zero means "now". For example, when a person is counting down the time to the start of something, such as a foot race or when a rocket takes off, the count is: "three, two, one, zero (or "go")". Zero is the exact time of the start of the race or when the rocket takes off into the sky.
+0 as a number.
+Definition.
+0 is the integer that precedes the positive 1, and follows −1. In most numerical systems, 0 was identified before the idea of "negative integers" was accepted. It means "courageous one" in hieroglyphics. 
+Zero is a number which means an amount of null size; that is, if the number of brothers is zero, that means the same thing as having no brothers, and if something has a weight of zero, it has no weight. If the difference between the numbers of pieces in two piles is zero, it means the two piles have an equal number of pieces. 
+Before counting starts, the result can be assumed to be zero; that is the number of items counted before one counts the first item, and counting the first item brings the result to one. And if there are no items to be counted, zero remains the final result.
+Debates.
+Is zero a number ?
+While mathematicians all accept zero as a number, some non-mathematicians would say that zero is not a number, arguing that one cannot have zero of something. Others say that if one has a bank balance of zero, one has a specific quantity of money in that account, namely none. It is that latter view which is accepted by mathematicians and most others.
+Is zero a natural number?
+A debate asking if 0 is or not a natural number has been discussed over time.
+The Encyclopædia Britannica defines 0 as a natural number. Wolfram MathWorld´says it isn't. The "On-Line Encyclopedia of Integer Sequences" objects. "The Princeton Companion to Mathematics" defines 0 as a natural number.
+Although the International Baccalaureate (IB) mathematics curriculum sees 0 as a natural number, the "Oxford Dictionary" states,
+&lt;templatestyles src="Template:Blockquote/styles.css" /&gt;a positive whole number such as 1, 2, or 3, and sometimes also zero.
+As year.
+There was no year zero between 1 BC and 1 AD. More specifically, almost all historians leave out the "year zero" from the proleptic proleptic Gregorian and Julian calendar, but astronomers include it in these same calendars. However, the phrase "Year Zero" may be used to describe any event considered so important, that someone might want to start counting years all over again from zero.
+0 as a numeral.
+The modern numeral 0 is normally written as a circle or (rounded) rectangle. In old-style fonts with text figures, 0 is usually the same height as a lowercase x.
+On the seven-segment displays of calculators, watches etc., 0 is usually written with six-line segments, though on some historical calculator models, it was written with four line segments. The four-segment 0 is not common. The "number" zero, as in the "zero brothers" example above, is not the same as the "numeral" or "digit" zero, used in numeral systems using positional notation. Successive positions of digits have higher values, so the digit zero is used to skip a position and give appropriate value to the preceding and following digits. A zero digit is not always necessary in a different positional number system. Something called bijective numeration is a possible example of a system without zeroes.
+As numerical digit.
+0 is also used as a numerical digit used to represent that number in numerals. It is used to hold the place of that digit, because correct placing of digits affects a numeral's value. Examples:
+Telling zero and the letter O apart.
+The number 0 and the letter O are both round, though of different widths. The difference is important on a computer. For one thing, a computer will not do arithmetic with the letter O, because it does not know that it should have been a zero.
+The oval-shaped zero and circular letter O came into use together on modern character displays. The zero with a dot in the centre seems to have begun as a choice on IBM 3270 controllers (this has the problem that it looks like the Greek letter theta). 
+The slashed zero, looking like the letter O with a diagonal line drawn inside it, is used in old-style ASCII graphic sets that came from the default typewheel on the well-known ASR-33 Teletype. This format causes problems because it looks like the symbol formula_1, representing the empty set, as well as for certain Scandinavian languages which use Ø as a letter.
+The rule which has the letter O with a slash and the zero without was used at IBM and a few other early mainframe makers; this is even more of a problem for Scandinavians, because it looks like two of their letters at the same time. Some Burroughs/Unisys computers display a zero with a backwards slash.
+Yet, another convention common on early line printers left zero without any extra dots or slashes but added a tail or hook to the letter O so that it resembled an inverted Q or cursive capital letter O.The letters used on some European number plates for cars make the two symbols look different. This is done by making the zero rather egg-shaped and the O more circular, but most of all by cutting open the zero on the upper right side, so the circle is not closed any more (as in ). The style of letters chosen is called "" (abbr.: "FE Schrift"), meaning "script which is harder to falsify". 
+However, those used in the United Kingdom do not make the letter o and the number 0 look different from each other, because there can never be any mistake if the letters are correctly spaced. In paper writing, one does not have to make the 0 (zero) and O (letter O) look different at all. Or you may add a slash across the zero in order to show the difference.
+Zeroes of a function.
+If the function "f"("x") = 0, then "x" is called a zero (or root) of the function "f". For example, if the function "f"("x") is "x"2 − 1, then the zeroes of the function are +1 and −1, because "f"(+1) = (+1)2 − 1 = 0, and "f"(−1) = (−1)2 − 1 = 0.
+Zeroes of a function are used because they are another way to talk about solving an equation, which is a main goal in algebra. If we want to solve an equation like "x"2 = 1, then we can subtract the right-hand side of the equation from both sides, in this case 1. Whatever we get on the left-hand side, in this case "x"2 − 1, can be called a function "f"(x). The right-hand side has to be zero, because we subtracted it from itself. So "f"(x) = 0. Finding the zeroes of this function is the same as solving this equation. In the paragraph before, the zeroes of this function are +1 and −1, so they are the solutions of this equation. We got this equation by subtracting the same thing from both sides, so we also have solutions to the equation we started with, in this case "x"2 = 1. More generally, if we could find zeroes of functions, we could solve any equation.
+References.
+Citations.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

@@ -1,0 +1,43 @@
+Hydrogen is a chemical element. It is the simplest element and the first in the periodic table. It has the symbol H and atomic number 1. Hydrogen also has a standard atomic weight of 1.008. This makes it the lightest element. Hydrogen is a gas at 15 degrees Celsius (59 degrees Fahrenheit) at standard atmosphere (and in many other situations). When hydrogen is in the form of "hydrogen gas", then each "hydrogen molecule" has two "hydrogen atoms".
+In standard conditions, hydrogen is a diatomic gas with the formula , or dihydrogen. In this state, hydrogen is also called hydrogen gas or molecular hydrogen. Hydrogen has no color, smell, or taste. Hydrogen is not toxic and is very combustible.
+Hydrogen is the most common chemical element in the universe. Hydrogen is almost 75% of all normal (baryonic) matter by mass. Most stars are made of mostly hydrogen. The hydrogen in the stars are in a plasma state. On Earth, hydrogen is seen in water and organic compounds. Hydrogen's most common isotope has one proton and no neutrons. This isotope also has one electron orbiting around it.
+Hydrogen is usually nonmetallic and can form covalent bonds with most nonmetals. These covalent bonds can create molecules such as water and other organic substances. Hydrogen is the main part of acid–base reactions. These reactions exchange protons in soluble molecules. In ionic compounds, ions can either be anions or cations. Hydrogen anions are negatively charged and are called hydrides. Hydrogen cations are positively charged and are written as . Cations are also called protons (symbol p), because they are only made of a proton and nothing else.
+Hydrogen gas was first made artificially in the 1700s. Henry Cavendish identified hydrogen gas as a distinct substance between 1766 and 1781.
+Most hydrogen production is from steam reforming natural gas. Hydrogen has many industrial uses. Hydrogen can be used to process fossil fuels, hydrocrack, and produce ammonia.
+Properties.
+Hydrogen is grouped as a reactive nonmetal. This is different from the other elements found in the first group of the periodic table, which are called alkali metals. Only the solid form of hydrogen should behave like a metal, though.
+When hydrogen is by itself, it will normally bind with itself to make dihydrogen (H2). Dihydrogen is very stable because of its high bond-dissociation energy of 435.7 kJ/mol.
+At normal temperature and pressure, hydrogen gas (H2) has no color, smell, or taste. It is also not poisonous. This is because it is a nonmetal and burns very easily. Hydrogen gas at this state also has low density and is not corrosive.
+Combustion.
+Molecular hydrogen is flammable and reacts with oxygen:
+2 H2(g) + O2(g) → 2 H2O(l) + 572 kJ (286 kJ/mol)
+At temperatures higher than 500 °C, hydrogen suddenly burns in air. This is called hydrogen autoignition temperature.
+Compounds.
+While hydrogen gas in its natural form is not reactive, it does form compounds with many elements, especially halogens, which are very electronegative, meaning they want an electron very badly. Hydrogen also forms massive arrays with carbon atoms, forming hydrocarbons. The study of the properties of hydrocarbons is known as organic chemistry.
+The H- anion (negatively charged atom) is named a hydride, though the word is not commonly used. An example of a hydride is lithium hydride (LiH), which is used as a "spark plug" in nuclear weapons.
+Acids.
+Acids dissolved in water normally contain high levels of hydrogen ions, in other words, free protons. Their level is generally used to determine its pH, that is, the content of hydrogen ions in a volume. For example, hydrochloric acid, found in people's stomachs, can dissociate into a chloride anion and a free proton, and the property of the free proton is how it can digest food by corroding it.
+Though uncommon on Earth, the H3+ cation is one of the most common ions in the universe.
+Isotopes.
+Hydrogen has 7 known isotopes, two of which are stable (1H and 2H), which are commonly named protium and deuterium. The isotope 3H is known as tritium, has a half-life of 12.33 years, and is produced in small amounts by cosmic rays. The 4 isotopes left have half-lives on the scale of yoctoseconds.
+Hydrogen in nature.
+In its natural form on Earth, hydrogen is generally a gas. Hydrogen is also one of the parts that make up a water molecule. Hydrogen is important because it is the fuel that powers the Sun and other stars.
+Hydrogen makes up about 74% of the complete universe. 
+Natural hydrogen is normally made of two hydrogen atoms connected together. Scientists name these diatomic molecules. Hydrogen will have a chemical reaction when mixed with most other elements, though it has no color or smell.
+Natural hydrogen is very uncommon in the Earth's atmosphere, because nearly all primordial hydrogen would have escaped into space because of its weight. In nature, it is generally in water. Hydrogen is also in all living things, as a part of the organic compounds that living things are made of. In addition, hydrogen atoms can join with carbon atoms to form hydrocarbons. Petroleum and other fossil fuels are made of these hydrocarbons and commonly used to make energy.
+Some other facts about hydrogen:
+History of Hydrogen.
+Hydrogen was first separated in 1671 by Robert Boyle. In 1776, Henry Cavendish identified it as its own element and named it "inflammable air". He saw in 1781 that burning it made water.
+Antoine Lavoisier gave Hydrogen its name, from the Greek word for water, 'υδορ (read /HEEW-dor/) and gennen meaning to "produce" as it forms water in a chemical reaction with oxygen.
+Big Bang (or the creation of our universe).
+Hydrogen did not begin to form a second after the Big Bang. These hydrogens did not have any neutrons or electrons. The first neutral hydrogen with an electron would not form until 380,000 years later during the recombination epoch, when the universe was cold enough for hydrogens to attract electrons.
+Uses of Hydrogen.
+The most common uses are in the petroleum industry and in making ammonia by the Haber process. Some is used in other places in the chemical industry. A little of it is used as fuel, for example in rockets for spacecraft. Most of the hydrogen that people use comes from a chemical reaction between natural gas and steam.
+Nuclear fusion.
+Nuclear fusion is a very powerful source of energy. It depends on forcing atoms together to make helium and energy, as in a star like the Sun, or in a hydrogen bomb. This needs a large amount of energy to get started, and is not easy to do currently. A big advantage over nuclear fission, which is used in today's nuclear power stations, is that it makes less nuclear waste and does not use a poisonous and uncommon fuel like uranium. More than 600 million tons of hydrogen undergo fusion every second on the Sun.
+Using hydrogen.
+Hydrogen is mostly used in the petroleum industry, to change heavy petroleum parts into lighter, more useful ones. It is also used to make ammonia. Smaller amounts are burned as fuel. Most hydrogen is made by a reaction between natural gas and steam.
+The electrolysis of water breaks water into hydrogen and oxygen, using electricity. Burning hydrogen joins with oxygen molecules to make steam (natural water vapor). A fuel cell joins hydrogen with an oxygen molecule, releasing an electron as electricity. For these reasons, many people believe hydrogen power will replace other synthetic fuels in the future.
+Hydrogen can also be burned to make heat for steam turbines or internal combustion engines. Like other synthetic fuels, hydrogen can be made from natural fuels such as coal or natural gas, or from electricity, and therefore represents a valuable addition to the power grid; in the same role as natural gas. Such a grid and infrastructure with fuel cell vehicles is now planned by a number of countries, such as Japan, Korea and many European countries. This lets these countries buy less petroleum, which is an economic advantage. The other advantage is that, used in a fuel cell or burned in a combustion engine as in a hydrogen car, the engine does not make pollution. Only water, and a small amount of nitrogen oxides, forms.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

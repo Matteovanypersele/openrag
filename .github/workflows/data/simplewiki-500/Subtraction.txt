@@ -1,0 +1,15 @@
+Subtraction is the arithmetic operation for finding the difference between two numbers, though it can also be generalized to other mathematical objects such as vectors and matrices. The names of the numbers in a subtraction expression are: formula_1. For example, the expression formula_2 can be read as "seven minus four equals three", "seven take away four leaves three", or "four from seven leaves three".
+If the minuend is less than the subtrahend, the difference will be a negative number. For example, formula_3. This can be read as "seventeen minus twenty-five equals negative eight".
+Subtraction is how cash registers determine the change a buyer receives, when the buyer pays with more money than the purchase cost. 
+Properties.
+Anti-commutativity.
+Subtraction is anti-commutative, meaning that swapping the numbers around the minus sign will give a number with the same magnitude, but the opposite sign (opposite number):
+formula_4
+Non-associativity.
+Subtraction is 'not' associative, which comes up when one tries to define repeated subtraction. In general, the expression
+formula_5
+means formula_6 or formula_7, but these two possibilities lead to different answers. To resolve this issue, one must establish an order of operations, with different orders yielding different results.
+Predecessor.
+In the context of integers, subtraction of one also plays a special role: for any integer formula_8, the integer formula_9 is the largest integer that is smaller than formula_8, also known as the predecessor of formula_8.
+References.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

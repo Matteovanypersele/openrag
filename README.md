@@ -120,6 +120,13 @@ For more details, [see this file](docs/features_in_details.md)
 * **Enhanced Security**: Ensures data encryption both during transit and at rest.
 
 ## 🚀 Installation
+For comprehensive documentation and troubleshooting guidance, visit our [documentation site](https://linagora.github.io/openrag/).
+
+To run the documentation site locally for development:
+```bash
+npm i     # Install dependencies (it's like `uv init`)
+npm run dev   # Start the development server (like `uv run`)
+```
 
 ### Prerequisites
 - **Python 3.12** or higher recommended
@@ -152,23 +159,49 @@ For CPU-only deployments or lightweight testing scenarios, you can consider swit
 </details>
 
 #### 4.Deployment: Launch the app
-
 >[!IMPORTANT]
 > In case **`Indexer UI` (A Web interface for intuitive document ingestion, indexing, and management.)** is not configured already in your `.env`, follow this dedicated guide:
 ➡ [Deploy with Indexer UI](docs/setup_indexerui.md)
 
-You can run the application with either GPU or CPU support, depending on your system:
+* **Simple and quick** launch for testing
+  >[!IMPORTANT]
+  > For a **simple `quick deployment`** using only the docker-compose file, only the [quick_start **folder**](./quick_start/) is required. Follow these steps to launch the application:
+  
+  1. Navigate to the **`quick_start`** directory or download only that folder
+  2. Place your **`.env`** file inside the **`quick_start`** directory
+  3. Run the appropriate command for your system:
 
-```bash
-# Start with GPU (recommended for better performance)
-docker compose up --build -d  # Use 'down' to stop
+  ```bash
+  # GPU deployment (recommended for optimal performance)
+  docker compose up -d
+  # docker compose down # to stop the application
 
-# Start with CPU
-docker compose --profile cpu up --build -d # Use '--profile cpu down' to stop it properly
-```
+  # CPU deployment
+  docker compose --profile cpu up -d
+  # docker compose --profile cpu down # to stop the application
+  ```
+* **Development Environment**: For development builds, use the **`--build`** flag to rebuild images:
+  >[!NOTE]
+  > Execute these commands from the project root directory
+
+  ```bash
+  # GPU deployment with rebuild (recommended for optimal performance)
+  docker compose up --build -d
+  # docker compose down # to stop the application
+
+  # CPU deployment with rebuild
+  docker compose --profile cpu up --build -d
+  # docker compose --profile cpu down # to stop the application
+  ```
 
 >[!WARNING]
-> The initial launch is longer due to the installation of required dependencies.
+> The first startup may take longer as required dependencies are installed. 
+
+>[!IMPORTANT]
+> For CPU-only deployments, consider these performance optimizations:
+> 1. Disable the reranker by setting **`RERANKER_ENABLED=false`** (reranking is computationally intensive on CPU)
+> 2. If keeping the reranker enabled (recommended for better RAG accuracy), reduce the number of documents sent for reranking by lowering **`RETRIEVER_TOP_K`** to approximately 10
+
 
 Once the app is up and running, visit `http://localhost:APP_PORT` or `http:X.X.X.X:APP_PORT` to access via:
 

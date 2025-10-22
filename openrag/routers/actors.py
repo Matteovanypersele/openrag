@@ -1,6 +1,6 @@
 import ray
 from components.utils import get_llm_semaphore, get_vlm_semaphore
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from ray.util.state import list_actors
 from utils.dependencies import (
@@ -12,10 +12,12 @@ from utils.dependencies import (
 )
 from utils.logger import get_logger
 
+from .utils import require_admin
+
 logger = get_logger()
 
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 actor_creation_map = {
     "TaskStateManager": get_task_state_manager,

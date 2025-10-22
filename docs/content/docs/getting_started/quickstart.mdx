@@ -1,0 +1,148 @@
+---
+title: Quick Start
+---
+import { Code } from '@astrojs/starlight/components';
+import env_example from '../../../assets/env_example.env?raw';
+import { FileTree } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+OpenRAG is an open source Retrieval Augmented Generation (RAG) solution. This guide is a step-by-step walkthrough to help you get started with OpenRAG.
+## Docker
+### Prerequisites
+- [Docker](https://www.docker.com/get-started) and **Docker Compose**
+- Your hardware should meet these specifications:
+  - **CPU deployment**: Minimum **13 GiB** RAM for light PDF parsers (**`PyMuPDF4LLMLoader`, `PyMuPDFLoader`**), or **23 GiB** RAM for heavier parsers like **`MarkerLoader`** (refer to [this section](/getting_started/quickstart/#3-file-parser-configuration) for details)
+  - **GPU deployment**: **16 GB** GPU memory recommended (for systems with separate CPU and GPU memory)
+
+### Installation and Configuration
+#### 1. Clone the repository:
+
+```bash title="Cloning the OpenRag repository"
+git clone --recurse-submodules git@github.com:linagora/openrag.git
+
+cd openrag/
+git checkout main # or a given release
+```
+#### 2. Create a `.env` File
+Create a `.env` file at the root of the project, mirroring the structure of `.env.example`, to configure your environment and supply blank environment variables.
+
+```bash title="Creating the .env file mirroring .env.example"
+cp .env.example .env
+```
+Here is a brief overview of key environment variables to configure:
+
+<Code code={env_example} lang="bash" title='.env'/>
+
+#### 3. File Parser configuration 
+All supported file format parsers are pre-configured. For PDF processing, **[MarkerLoader](https://github.com/datalab-to/marker)** serves as the default parser, offering comprehensive support for OCR-scanned documents, complex layouts, tables, and embedded images. MarkerLoader operates efficiently on both GPU and CPU environments.
+
+:::note 
+For **`CPU-only deployments`** or lightweight testing scenarios, you can consider switching to **`PyMuPDF4LLMLoader`** or **`PyMuPDFLoader`**. To change the loader, set the **`PDFLoader`** variable like this `PDFLoader=PyMuPDF4LLMLoader`.
+:::caution[Important]
+These alternative loaders have limitations - they cannot process non-searchable (image-based) PDFs and do not extract or handle embedded images.
+:::
+
+#### Deployment
+:::tip[Setting up the Indexer UI]
+In case **`Indexer UI` (A Web interface for intuitive document ingestion, indexing, and management.)** is not configured already in your `.env`, follow this dedicated guide:
+➡ [Deploy with Indexer UI](/documentation/setup_indexerui/)
+:::
+
+##### `Simple and quick` launch for testing
+  :::info
+  [OpenRAG repository](https://github.com/linagora/openrag) contains a ready-to-use `docker-compose.yml` file in the **`quick_start` folder**. This setup is ideal for local testing and quick deployments.
+  <FileTree>
+  - quick_start
+    - extern reranker and embedder utils
+      - vllm cpu dockerfile for different architectures
+        - Dockerfile.cpu for x86 CPU
+      - infinity.yaml reranker service
+    - vdb
+      - milvus.yaml
+    - docker-compose.yml
+    - .env the configured .env file
+  </FileTree>
+  :::
+
+  1. Navigate to the **`quick_start`** directory or copy it
+  2. Place your **`.env`** file in the **`quick_start`** folder
+  3. Run the appropriate command for your system:
+
+
+  <Tabs>
+    <TabItem label="GPU">
+    GPU deployment, recommended for optimal performance
+
+    ```bash frame="none" {4}
+    docker compose up -d
+
+    # run the following command to stop the application
+    # docker compose down
+    ```
+    </TabItem>
+    <TabItem label="x86 CPU">
+    CPU deployment
+    ```bash frame="none" "--profile cpu" {4}
+    docker compose --profile cpu up -d
+
+    # to stop the application
+    # docker compose --profile cpu down
+    ```
+    </TabItem>
+  </Tabs>
+
+
+##### Development Environment
+
+For development builds, use the **`--build`** flag to rebuild images:
+  Execute these commands from the project root directory or the cloned repository:
+
+  <FileTree>
+    - .github/
+    - .hydra_config/
+    - ...
+    - extern/
+    - vdb/
+    - docker-compose.yml
+    - README.md
+    - .env.example
+    - pyproject.toml
+    - uv.lock
+    - .env the configured .env file
+  </FileTree>
+
+  <Tabs>
+    <TabItem label="GPU">
+    GPU deployment
+    ```bash frame="none" {4}
+    docker compose up -d
+
+    # run the following command to stop the application
+    # docker compose down
+    ```
+    </TabItem>
+    <TabItem label="CPU">
+    CPU deployment
+    ```bash frame="none" "--profile cpu" {4}
+    docker compose --profile cpu up -d
+
+    # to stop the application
+    # docker compose --profile cpu down
+    ```
+    </TabItem>
+  </Tabs>
+
+Once the app is up and running, you can access the provided services. See the next section.
+
+## Ansible
+
+Clone the OpenRAG repository:
+```bash
+git clone https://github.com/linagora/openrag.git
+cd openrag
+```
+
+Run the provided deployment script and follow the instructions:
+```bash
+./ansible/deploy.sh
+```

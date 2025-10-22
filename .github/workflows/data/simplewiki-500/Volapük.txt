@@ -1,0 +1,12 @@
+Volapük (pronounced ] in English, ] in Volapük) is a constructed language created in 1880 by Johann Martin Schleyer. Schleyer was a Catholic priest from Germany. He felt that God had told him in a dream to make an international language. The name "Volapük" comes from the words "vol" (world) and "pük" (language). Volapük conventions took place in 1884, 1887, and 1889. The aim was to help people from different cultures speak to each other.
+Volapük became less popular after 1887 when Esperanto was published. Part of the reason for this was that Esperanto is easier to learn with a simpler grammar. There are believed to only be 20-30 Volapük speakers in the world today.
+The vocabulary of Volapük is mostly English, with some words from German and French. The grammar is based on Indo-European languages.
+History.
+Volapük was created by Johann Martin Schleyer. He first wrote about his idea in 1887. He published a book about Volapük in 1880. The book was translated into ten languages. Soon, people started creating Volapük clubs in Europe.
+The language started to become popular. People published books and journals in Volapük. However, not everybody liked the language. The American Philosophical Society thought that Volapük was too complex.
+Example text.
+Below is the Lord's Prayer written in Volapük.
+&lt;poem&gt;
+&lt;/poem&gt;
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

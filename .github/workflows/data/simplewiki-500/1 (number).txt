@@ -1,0 +1,8 @@
+One (1) is the first natural number, followed by two. The Roman numeral for one is I.
+Mathematics.
+In mathematics, the number one is the multiplicative identity. It is also the only number for which these special facts are true:
+In mathematics, 0.999... is a repeating decimal that is equal to 1. Many proofs have been made to show this is correct.
+Computer science.
+One is important for computer science, because the binary numeral system uses only ones and zeroes to represent numbers. In machine code and many programming languages, one means "true" (or "yes") and zero means "false" (or "no").
+References.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

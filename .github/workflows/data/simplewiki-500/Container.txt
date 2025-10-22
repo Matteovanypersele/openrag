@@ -1,0 +1,3 @@
+A container is an object used for holding something. People put things in a container. The use of shipping containers is called Containerization.
+Types of container.
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

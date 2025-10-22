@@ -11,13 +11,23 @@ from fastapi import (
     Form,
     HTTPException,
     Request,
-    Response,
     UploadFile,
     status,
 )
 from fastapi.responses import JSONResponse
 from utils.dependencies import get_indexer, get_task_state_manager, get_vectordb
 from utils.logger import get_logger
+
+from .utils import (
+    current_user_partitions,
+    ensure_partition_role,
+    human_readable_size,
+    require_partition_editor,
+    require_task_owner,
+    validate_file_format,
+    validate_file_id,
+    validate_metadata,
+)
 
 # load logger
 logger = get_logger()
@@ -35,68 +45,6 @@ DICT_MIMETYPES = dict(config.loader["mimetypes"])
 
 # Create an APIRouter instance
 router = APIRouter()
-
-
-def is_file_id_valid(file_id: str) -> bool:
-    return not any(c in file_id for c in FORBIDDEN_CHARS_IN_FILE_ID)
-
-
-async def validate_file_id(file_id: str):
-    if not is_file_id_valid(file_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File ID contains forbidden characters: {', '.join(FORBIDDEN_CHARS_IN_FILE_ID)}",
-        )
-    if not file_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="File ID cannot be empty."
-        )
-    return file_id
-
-
-async def validate_metadata(metadata: Optional[Any] = Form(None)):
-    try:
-        processed_metadata = metadata or "{}"
-        processed_metadata = json.loads(processed_metadata)
-        return processed_metadata
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON in metadata"
-        )
-
-
-async def validate_file_format(
-    file: UploadFile,
-    metadata: dict = Depends(validate_metadata),
-):
-    file_extension = (
-        file.filename.split(".")[-1].lower() if "." in file.filename else ""
-    )
-    mimetype = metadata.get("mimetype", None)
-
-    if (
-        file_extension not in ACCEPTED_FILE_FORMATS
-        and mimetype not in DICT_MIMETYPES.keys()
-    ):
-        details = (
-            f"Unsupported file format: {file_extension} or file mimetype.\n"
-            f"Supported formats: {', '.join(ACCEPTED_FILE_FORMATS)}\n"
-            f"Supported mimetypes: {', '.join(DICT_MIMETYPES.keys())}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=details,
-        )
-    return file
-
-
-def _human_readable_size(size_bytes: int) -> str:
-    """Convert bytes to a human-readable format (e.g., '2.4 MB')."""
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size_bytes < 1024:
-            return f"{size_bytes:.2f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.2f} PB"
 
 
 @router.get(
@@ -155,8 +103,14 @@ async def add_file(
     indexer=Depends(get_indexer),
     task_state_manager=Depends(get_task_state_manager),
     vectordb=Depends(get_vectordb),
+    user=Depends(require_partition_editor),
 ):
-    log = logger.bind(file_id=file_id, partition=partition, filename=file.filename)
+    log = logger.bind(
+        file_id=file_id,
+        partition=partition,
+        filename=file.filename,
+        user=user.get("display_name"),
+    )
 
     if await vectordb.file_exists.remote(file_id, partition):
         raise HTTPException(
@@ -182,16 +136,16 @@ async def add_file(
     file_stat = Path(file_path).stat()
 
     # Append extra metadata
-    metadata["file_size"] = _human_readable_size(file_stat.st_size)
+    metadata["file_size"] = human_readable_size(file_stat.st_size)
     metadata["created_at"] = datetime.fromtimestamp(file_stat.st_ctime).isoformat()
     metadata["file_id"] = file_id
 
     # Indexing the file
     task = indexer.add_file.remote(
-        path=file_path, metadata=metadata, partition=partition
+        path=file_path, metadata=metadata, partition=partition, user=user
     )
     await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
-
+    await task_state_manager.set_object_ref.remote(task.task_id().hex(), {"ref": task})
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content={
@@ -203,9 +157,20 @@ async def add_file(
 
 
 @router.delete("/partition/{partition}/file/{file_id}")
-async def delete_file(partition: str, file_id: str, indexer=Depends(get_indexer)):
+async def delete_file(
+    partition: str,
+    file_id: str,
+    indexer=Depends(get_indexer),
+    vectordb=Depends(get_vectordb),
+    user=Depends(require_partition_editor),
+):
+    if not await vectordb.file_exists.remote(file_id, partition):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"'{file_id}' not found in partition '{partition}'",
+        )
     await indexer.delete_file.remote(file_id, partition)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/partition/{partition}/file/{file_id}")
@@ -218,13 +183,14 @@ async def put_file(
     indexer=Depends(get_indexer),
     task_state_manager=Depends(get_task_state_manager),
     vectordb=Depends(get_vectordb),
+    user=Depends(require_partition_editor),
 ):
     log = logger.bind(file_id=file_id, partition=partition, filename=file.filename)
 
     if not await vectordb.file_exists.remote(file_id, partition):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found in partition '{partition}'.",
+            detail=f"'{file_id}' not found in partition '{partition}'",
         )
 
     # Delete the existing file from the vector database
@@ -248,7 +214,7 @@ async def put_file(
     file_stat = Path(file_path).stat()
 
     # Append extra metadata
-    metadata["file_size"] = _human_readable_size(file_stat.st_size)
+    metadata["file_size"] = human_readable_size(file_stat.st_size)
     metadata["created_at"] = datetime.fromtimestamp(file_stat.st_ctime).isoformat()
     metadata["file_id"] = file_id
 
@@ -257,6 +223,7 @@ async def put_file(
         path=file_path, metadata=metadata, partition=partition
     )
     await task_state_manager.set_state.remote(task.task_id().hex(), "QUEUED")
+    await task_state_manager.set_object_ref.remote(task.task_id().hex(), {"ref": task})
 
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
@@ -274,14 +241,52 @@ async def patch_file(
     file_id: str = Depends(validate_file_id),
     metadata: Optional[Any] = Depends(validate_metadata),
     indexer=Depends(get_indexer),
-    vectordb=Depends(get_vectordb),
+    user=Depends(require_partition_editor),
+    user_partitions=Depends(current_user_partitions),
 ):
     metadata["file_id"] = file_id
-    await indexer.update_file_metadata.remote(file_id, metadata, partition)
+
+    # Make sure partition role is valid if partition is being changed
+    if "partition" in metadata:
+        await ensure_partition_role(
+            partition=metadata["partition"],
+            user=user,
+            user_partitions=user_partitions,
+            required_role="editor",
+        )
+
+    await indexer.update_file_metadata.remote(file_id, metadata, partition, user=user)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"message": f"Metadata for file '{file_id}' successfully updated."},
     )
+
+
+@router.post("/partition/{partition}/file/{file_id}/copy")
+async def copy_file_between_partitions(
+    partition: str,
+    file_id: str = Depends(validate_file_id),
+    metadata: Optional[Any] = Depends(validate_metadata),
+    source_partition: str = Form(...),
+    source_file_id: str = Form(...),
+    indexer=Depends(get_indexer),
+    user=Depends(require_partition_editor),
+    user_partitions=Depends(current_user_partitions),
+):
+    # Make sure user has access to destination partition
+    await ensure_partition_role(
+        partition=source_partition,
+        user=user,
+        user_partitions=user_partitions,
+        required_role="viewer",
+    )
+    metadata["file_id"] = file_id
+    metadata["partition"] = partition
+
+    await indexer.copy_file.remote(
+        file_id=source_file_id, metadata=metadata, partition=source_partition, user=user
+    )
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content={"message": "File copied successfully."})
 
 
 @router.get("/task/{task_id}")
@@ -289,6 +294,7 @@ async def get_task_status(
     request: Request,
     task_id: str,
     task_state_manager=Depends(get_task_state_manager),
+    task_details=Depends(require_task_owner),
 ):
     # fetch task state
     state = await task_state_manager.get_state.remote(task_id)
@@ -298,14 +304,11 @@ async def get_task_status(
             detail=f"Task '{task_id}' not found.",
         )
 
-    # fetch task details
-    details = await task_state_manager.get_details.remote(task_id)
-
     # format the response
     content: dict[str, Any] = {
         "task_id": task_id,
         "task_state": state,
-        "details": details,
+        "details": task_details,
     }
 
     if state == "FAILED":
@@ -316,7 +319,9 @@ async def get_task_status(
 
 @router.get("/task/{task_id}/error")
 async def get_task_error(
-    task_id: str, task_state_manager=Depends(get_task_state_manager)
+    task_id: str,
+    task_state_manager=Depends(get_task_state_manager),
+    task_details=Depends(require_task_owner),
 ):
     try:
         error = await task_state_manager.get_error.remote(task_id)
@@ -336,7 +341,9 @@ async def get_task_error(
 
 
 @router.get("/task/{task_id}/logs")
-async def get_task_logs(task_id: str, max_lines: int = 100):
+async def get_task_logs(
+    task_id: str, max_lines: int = 100, task_details=Depends(require_task_owner)
+):
     try:
         if not LOG_FILE.exists():
             raise HTTPException(status_code=500, detail="Log file not found.")
@@ -370,7 +377,11 @@ async def get_task_logs(task_id: str, max_lines: int = 100):
 
 
 @router.delete("/task/{task_id}", name="cancel_task")
-async def cancel_task(task_id: str, task_state_manager=Depends(get_task_state_manager)):
+async def cancel_task(
+    task_id: str,
+    task_state_manager=Depends(get_task_state_manager),
+    task_details=Depends(require_task_owner),
+):
     try:
         obj_ref = await task_state_manager.get_object_ref.remote(task_id)
         if obj_ref is None:

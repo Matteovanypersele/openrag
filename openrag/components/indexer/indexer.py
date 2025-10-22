@@ -100,6 +100,7 @@ class Indexer:
         path: Union[str, List[str]],
         metadata: Optional[Dict] = {},
         partition: Optional[str] = None,
+        user: Optional[Dict] = None,
     ):
         task_state_manager = ray.get_actor("TaskStateManager", namespace="openrag")
         task_id = ray.get_runtime_context().get_task_id()
@@ -117,6 +118,7 @@ class Indexer:
                 file_id=metadata.get("file_id"),
                 partition=partition,
                 metadata=user_metadata,
+                user_id=user.get("id"),
             )
 
             # Check/normalize partition
@@ -130,10 +132,15 @@ class Indexer:
             await task_state_manager.set_state.remote(task_id, "CHUNKING")
             chunks = await self.handle.chunk.remote(doc, str(path), task_id)
 
-            if self.enable_insertion and chunks:
-                await task_state_manager.set_state.remote(task_id, "INSERTING")
-                await self.handle.insert_documents.remote(chunks)
-                log.info(f"Document {path} indexed successfully")
+            if self.enable_insertion:
+                if chunks:
+                    await task_state_manager.set_state.remote(task_id, "INSERTING")
+                    await self.handle.insert_documents.remote(chunks, user=user)
+                    log.info(f"Document {path} indexed successfully")
+                else:
+                    log.debug(
+                        "No chunks to insert !!! Potentially the uploaded file is empty"
+                    )
             else:
                 log.info(
                     f"Vectordb insertion skipped (enable_insertion={self.enable_insertion})."
@@ -164,9 +171,9 @@ class Indexer:
         return True
 
     @ray.method(concurrency_group="insert")
-    async def insert_documents(self, chunks):
+    async def insert_documents(self, chunks, user):
         vectordb = ray.get_actor("Vectordb", namespace="openrag")
-        await vectordb.async_add_documents.remote(chunks)
+        await vectordb.async_add_documents.remote(chunks, user)
 
     @ray.method(concurrency_group="delete")
     async def delete_file(self, file_id: str, partition: str) -> bool:
@@ -187,7 +194,13 @@ class Indexer:
             raise
 
     @ray.method(concurrency_group="update")
-    async def update_file_metadata(self, file_id: str, metadata: Dict, partition: str):
+    async def update_file_metadata(
+        self,
+        file_id: str,
+        metadata: Dict,
+        partition: str,
+        user: Optional[Dict] = None,
+    ):
         log = self.logger.bind(file_id=file_id, partition=partition)
         vectordb = ray.get_actor("Vectordb", namespace="openrag")
         if not self.enable_insertion:
@@ -202,11 +215,45 @@ class Indexer:
                 doc.metadata.update(metadata)
 
             await self.delete_file(file_id, partition)
-            await vectordb.async_add_documents.remote(docs)
+            await vectordb.async_add_documents.remote(docs, user=user)
 
             log.info("Metadata updated for file.")
         except Exception as e:
             log.exception("Error in update_file_metadata", error=str(e))
+            raise
+
+    @ray.method(concurrency_group="update")
+    async def copy_file(
+        self,
+        file_id: str,
+        metadata: Dict,
+        partition: str,
+        user: Optional[Dict] = None,
+    ):
+        log = self.logger.bind(file_id=file_id, partition=partition)
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
+        if not self.enable_insertion:
+            log.error(
+                "Vector database is not enabled, but update_file_metadata was called."
+            )
+            return
+
+        try:
+            docs = await vectordb.get_file_chunks.remote(file_id, partition)
+            for doc in docs:
+                doc.metadata.update(metadata)
+
+            await vectordb.async_add_documents.remote(docs, user=user)
+
+            log.info(
+                "File copy completed",
+                file_id=file_id,
+                partition=partition,
+                new_file_id=metadata.get("file_id"),
+                new_partition=metadata.get("partition"),
+            )
+        except Exception as e:
+            log.exception("Error in copy_file", error=str(e))
             raise
 
     @ray.method(concurrency_group="search")
@@ -261,6 +308,7 @@ class TaskInfo:
 class TaskStateManager:
     def __init__(self):
         self.tasks: Dict[str, TaskInfo] = {}
+        self.user_index: Dict[int, set[str]] = {}
         self.lock = asyncio.Lock()
 
     async def _ensure_task(self, task_id: str) -> TaskInfo:
@@ -283,7 +331,13 @@ class TaskStateManager:
 
     @ray.method(concurrency_group="set")
     async def set_details(
-        self, task_id: str, *, file_id: str, partition: int, metadata: dict
+        self,
+        task_id: str,
+        *,
+        file_id: str,
+        partition: int,
+        metadata: dict,
+        user_id: int,
     ):
         async with self.lock:
             info = await self._ensure_task(task_id)
@@ -291,7 +345,9 @@ class TaskStateManager:
                 "file_id": file_id,
                 "partition": partition,
                 "metadata": metadata,
+                "user_id": user_id,
             }
+            self.user_index.setdefault(user_id, set()).add(task_id)
 
     @ray.method(concurrency_group="set")
     async def set_object_ref(self, task_id: str, object_ref: dict):
@@ -338,6 +394,20 @@ class TaskStateManager:
                     "details": info.details,
                 }
                 for task_id, info in self.tasks.items()
+            }
+
+    @ray.method(concurrency_group="queue_info")
+    async def get_all_user_info(self, user_id: int) -> Dict[str, dict]:
+        async with self.lock:
+            task_ids = self.user_index.get(user_id, set())
+            return {
+                tid: {
+                    "state": self.tasks[tid].state,
+                    "error": self.tasks[tid].error,
+                    "details": self.tasks[tid].details,
+                }
+                for tid in task_ids
+                if tid in self.tasks
             }
 
     @ray.method(concurrency_group="queue_info")
