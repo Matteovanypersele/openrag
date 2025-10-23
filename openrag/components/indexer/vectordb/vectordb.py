@@ -112,6 +112,22 @@ class BaseVectorDB(ABC):
 
 MAX_LENGTH = 65_535
 
+analyzer_params = {
+    "tokenizer": "standard",
+    "filter": [
+        {
+            "type": "stop",  # Specifies the filter type as stop
+            "stop_words": [
+                "<image_description>",
+                "</image_description>",
+                "[Image Placeholder]",
+                "_english_",
+                "_french_",
+            ],  # Defines custom stop words and includes the English and French stop word list
+        }
+    ],
+}
+
 
 @ray.remote
 class MilvusDB(BaseVectorDB):
@@ -247,6 +263,7 @@ class MilvusDB(BaseVectorDB):
             enable_analyzer=True,
             enable_match=True,
             max_length=MAX_LENGTH,
+            analyzer_params=analyzer_params,
         )
 
         schema.add_field(
