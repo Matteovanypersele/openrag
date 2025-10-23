@@ -20,13 +20,13 @@ class BaseLoader(ABC):
     def __init__(self, **kwargs) -> None:
         self.page_sep = "[PAGE_SEP]"
         self.config = kwargs.get("config")
-        vlm_config = self.config.vlm
+        settings: dict = dict(self.config.vlm)
         model_settings = {
             "temperature": 0.2,
             "max_retries": 3,
             "timeout": 60,
+            "extra_body": {"chat_template_kwargs": {"enable_thinking": False}},
         }
-        settings: dict = vlm_config
         settings.update(model_settings)
 
         self.image_captioning = self.config.loader.get("image_captioning", False)
