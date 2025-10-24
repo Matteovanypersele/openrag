@@ -54,7 +54,7 @@ class PPTXConverter:
                         html_table += "</tr>"
                         first_row = False
                     html_table += "</table></body></html>"
-                    md_content += "\n" + convert(html_table).text_content.strip() + "\n"
+                    md_content += "\n" + convert(html_table).strip() + "\n"
 
                 # Charts
                 if shape.has_chart:
