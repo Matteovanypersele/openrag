@@ -225,7 +225,16 @@ if __name__ == "__main__":
         serve.start(
             http_options={"host": config.ray.serve.host, "port": config.ray.serve.port}
         )
-        serve.run(OpenRagAPI.bind(), route_prefix="/", blocking=True)
+        if WITH_CHAINLIT_UI:
+            from chainlit_api import app as chainlit_app
+            serve.run(OpenRagAPI.bind(), route_prefix="/")
+            uvicorn.run(
+                chainlit_app,
+                host="0.0.0.0",
+                port=config.ray.serve.chainlit_port
+            )
+        else:
+            serve.run(OpenRagAPI.bind(), route_prefix="/", blocking=True)
 
     else:
         uvicorn.run(

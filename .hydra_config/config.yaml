@@ -1,7 +1,7 @@
 defaults:
-  - _self_  # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
-  - chunker: recursive_splitter # markdown_splitter # semantic_splitter # 
-  - retriever: ${oc.env:RETRIEVER_TYPE, single}  # single # multiQuery # hyde
+  - _self_ # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
+  - chunker: recursive_splitter # markdown_splitter # semantic_splitter #
+  - retriever: ${oc.env:RETRIEVER_TYPE, single} # single # multiQuery # hyde
   - rag: ChatBotRag
 
 llm_params: &llm_params
@@ -19,7 +19,7 @@ llm:
 vlm:
   <<: *llm_params
   base_url: ${oc.env:VLM_BASE_URL}
-  model: ${oc.env:VLM_MODEL}  
+  model: ${oc.env:VLM_MODEL}
   api_key: ${oc.env:VLM_API_KEY}
 
 semaphore:
@@ -31,12 +31,12 @@ embedder:
   model_name: ${oc.env:EMBEDDER_MODEL_NAME, jinaai/jina-embeddings-v3}
   base_url: ${oc.env:EMBEDDER_BASE_URL, http://vllm:8000/v1}
   api_key: ${oc.env:EMBEDDER_API_KEY, EMPTY}
-  
+
 vectordb:
   host: ${oc.env:VDB_HOST, milvus}
   port: ${oc.env:VDB_iPORT, 19530}
   connector_name: ${oc.env:VDB_CONNECTOR_NAME, milvus}
-  collection_name: ${oc.env:VDB_COLLECTION_NAME, vdb_test} 
+  collection_name: ${oc.env:VDB_COLLECTION_NAME, vdb_test}
   hybrid_search: true
   enable: true
 
@@ -55,10 +55,10 @@ reranker:
 map_reduce:
   # Number of documents to process in the initial mapping phase
   initial_batch_size: ${oc.decode:${oc.env:MAP_REDUCE_INITIAL_BATCH_SIZE, 10}}
-  
+
   # Number of additional documents to probe when all previous chunks are relevant
   expansion_batch_size: ${oc.decode:${oc.env:MAP_REDUCE_EXPANSION_BATCH_SIZE, 5}}
-  
+
   # Maximum total number of documents (chunks) to process across all iterations
   max_total_documents: ${oc.decode:${oc.env:MAP_REDUCE_MAX_TOTAL_DOCUMENTS, 20}}
 
@@ -102,7 +102,7 @@ loader:
     audio/mpeg: .mp3
   file_loaders:
     txt: TextLoader
-    pdf: ${oc.env:PDFLoader, MarkerLoader}  # DoclingLoader # MarkerLoader # PyMuPDFLoader # Custompymupdf4llm
+    pdf: ${oc.env:PDFLoader, MarkerLoader} # DoclingLoader # MarkerLoader # PyMuPDFLoader # Custompymupdf4llm
     eml: EmlLoader
     docx: DocxLoader
     pptx: PPTXLoader
@@ -147,3 +147,4 @@ ray:
     num_replicas: ${oc.decode:${oc.env:RAY_SERVE_NUM_REPLICAS, 1}}
     host: ${oc.env:RAY_SERVE_HOST, 0.0.0.0}
     port: ${oc.env:RAY_SERVE_PORT, 8080}
+    chainlit_port: ${oc.env:CHAINLIT_PORT, 8090}
