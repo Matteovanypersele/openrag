@@ -191,8 +191,7 @@ env:
     RERANKER_MODEL_TYPE: "infinity"
 
     # Prompts
-    PROMPTS_DIR: "../prompts/example3"
-    COLBERT_LOAD_TORCH_EXTENSION_VERBOSE: "True"
+    PROMPTS_DIR: "../prompts/example1"
 
     # Loaders
     PDFLoader: "MarkerLoader"

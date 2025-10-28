@@ -1,7 +1,7 @@
 import copy
 from enum import Enum
-from pathlib import Path
 
+from components.prompts import QUERY_CONTEXTUALIZER_PROMPT, SYS_PROMPT_TMPLT
 from langchain_core.documents.base import Document
 from openai import AsyncOpenAI
 from utils.logger import get_logger
@@ -10,7 +10,7 @@ from .llm import LLM
 from .map_reduce import RAGMapReduce
 from .reranker import Reranker
 from .retriever import ABCRetriever, RetrieverFactory
-from .utils import format_context, load_sys_template
+from .utils import format_context
 
 logger = get_logger()
 
@@ -21,33 +21,31 @@ class RAGMODE(Enum):
 
 
 class RetrieverPipeline:
-    def __init__(self, config, logger=None) -> None:
+    def __init__(self, config) -> None:
         self.config = config
-        self.logger = logger
 
         # retriever
-        self.retriever: ABCRetriever = RetrieverFactory.create_retriever(
-            config=config, logger=self.logger
-        )
+        self.retriever: ABCRetriever = RetrieverFactory.create_retriever(config=config)
 
         # reranker
         self.reranker = None
         self.reranker_enabled = config.reranker["enable"]
-        self.logger.debug("Reranker", enabled=self.reranker_enabled)
+        logger.debug("Reranker", enabled=self.reranker_enabled)
         self.reranker_top_k = int(config.reranker["top_k"])
 
-        # map reduce
-        self.map_reduce_n_docs = self.config.map_reduce["map_reduce_n_docs"]
+        # map & reduce
+        self.retriever_top_k = int(config.retriever["top_k"])
+        self.map_reduce_max_docs = self.config.map_reduce["max_total_documents"]
 
         if self.reranker_enabled:
-            self.reranker = Reranker(self.logger, config)
+            self.reranker = Reranker(logger, config)
 
     async def retrieve_docs(
         self, partition: list[str], query: str, use_map_reduce: bool = False
     ) -> list[Document]:
         docs = await self.retriever.retrieve(partition=partition, query=query)
         top_k = (
-            max(self.map_reduce_n_docs, self.reranker_top_k)
+            max(self.map_reduce_max_docs, self.reranker_top_k)
             if use_map_reduce
             else self.reranker_top_k
         )
@@ -63,31 +61,19 @@ class RetrieverPipeline:
 
 
 class RagPipeline:
-    def __init__(self, config, logger=None) -> None:
+    def __init__(self, config) -> None:
         self.config = config
-        self.logger = logger
 
         # retriever pipeline
-        self.retriever_pipeline = RetrieverPipeline(config=config, logger=self.logger)
-
-        self.prompts_dir = Path(config.paths.prompts_dir)
-        # contextualizer prompt
-        self.contextualizer_pmpt = load_sys_template(
-            self.prompts_dir / config.prompt["contextualizer_pmpt"]
-        )
-
-        # rag sys prompt
-        self.rag_sys_prompt: str = load_sys_template(
-            self.prompts_dir / config.prompt["rag_sys_pmpt"]
-        )
+        self.retriever_pipeline = RetrieverPipeline(config=config)
 
         self.rag_mode = config.rag["mode"]
         self.chat_history_depth = config.rag["chat_history_depth"]
 
-        self.llm_client = LLM(config.llm, self.logger)
-        self.vlm_client = LLM(config.vlm, self.logger)
+        self.llm_client = LLM(config.llm, logger)
+        self.vlm_client = LLM(config.vlm, logger)
         self.contextualizer = AsyncOpenAI(
-            base_url=config.vlm["base_url"], api_key=config.vlm["api_key"]
+            base_url=config.llm["base_url"], api_key=config.llm["api_key"]
         )
         self.max_contextualized_query_len = config.rag["max_contextualized_query_len"]
 
@@ -115,9 +101,9 @@ class RagPipeline:
                 }
 
                 response = await self.contextualizer.chat.completions.create(
-                    model=self.config.vlm["model"],
+                    model=self.config.llm["model"],
                     messages=[
-                        {"role": "system", "content": self.contextualizer_pmpt},
+                        {"role": "system", "content": QUERY_CONTEXTUALIZER_PROMPT},
                         {
                             "role": "user",
                             "content": f"Given the following chat, generate a query. \n{chat_history}\n",
@@ -146,19 +132,7 @@ class RagPipeline:
         )
 
         if use_map_reduce and docs:
-            context = "Extracted documents:\n"
-            summarized_docs = []
-            res = await self.map_reduce.map(query=query, chunks=docs)
-
-            for i, (synthesis, doc) in enumerate(res):
-                context += f"* {i}: {synthesis}"
-                context += "\n" + "-" * 10 + "\n"
-                summarized_docs.append(
-                    Document(page_content=synthesis, metadata=doc.metadata)
-                )
-
-            # logger.debug("Context after map-reduce", context=context)
-            docs = summarized_docs
+            docs = await self.map_reduce.map(query=query, chunks=docs)
 
         # 3. Format the retrieved docs
         context = format_context(docs)
@@ -171,7 +145,7 @@ class RagPipeline:
             0,
             {
                 "role": "system",
-                "content": self.rag_sys_prompt.format(context=context),
+                "content": SYS_PROMPT_TMPLT.format(context=context),
             },
         )
         payload["messages"] = messages

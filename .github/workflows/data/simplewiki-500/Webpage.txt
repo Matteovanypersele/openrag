@@ -1,0 +1,6 @@
+A webpage (or web page) is a document from the internet which can be seen with a web browser. Web pages each have a URL or address, which is how a page is found, and is different for every page. When a webpage is part of a larger group of pages managed by a company, person, or organization, it is part of a website.
+Pages can have words, pictures, videos, and links. Links are ways to get to other web pages.
+For example, this article is a webpage. It has the URL https://simple.wikipedia.org/wiki/Webpage, and is part of the Wikipedia website. It has words and links. The links in this page are shown in blue and can be clicked to go to other webpages.
+Technology.
+Web pages are usually stored in HTML code which describes what to show on the page like words or pictures. Web pages can also use two other types of code to tell the page how to work: 
+ "This about can be made longer. You can help Wikipedia by [ adding to it]".

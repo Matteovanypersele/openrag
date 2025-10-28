@@ -1,15 +1,25 @@
 import html
 import re
 from io import BytesIO
+
 import pptx
+from html_to_markdown import convert
 from langchain_core.documents.base import Document
 from PIL import Image
 from tqdm.asyncio import tqdm
+from utils.logger import get_logger
 
 from .base import BaseLoader
 
+logger = get_logger()
+
 
 class PPTXConverter:
+    """Implementation based on PPTX converter in MarkItDown library.
+
+    https://github.com/microsoft/markitdown/blob/main/packages/markitdown/src/markitdown/converters/_pptx_converter.py
+    """
+
     def __init__(
         self, image_placeholder=r"<image>", page_separator: str = "[PAGE_SEP]"
     ):
@@ -44,9 +54,7 @@ class PPTXConverter:
                         html_table += "</tr>"
                         first_row = False
                     html_table += "</table></body></html>"
-                    md_content += (
-                        "\n" + self._convert(html_table).text_content.strip() + "\n"
-                    )
+                    md_content += "\n" + convert(html_table).strip() + "\n"
 
                 # Charts
                 if shape.has_chart:
@@ -73,40 +81,59 @@ class PPTXConverter:
         return md_content, images_list
 
     def _is_picture(self, shape):
-        if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.PICTURE:
-            return True
-        if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.PLACEHOLDER:
-            if hasattr(shape, "image"):
+        try:
+            if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.PICTURE:
                 return True
+            if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.PLACEHOLDER:
+                if hasattr(shape, "image"):
+                    return True
+        except NotImplementedError:
+            # https://python-pptx.readthedocs.io/en/latest/_modules/pptx/shapes/autoshape.html
+            # Not all shape types are implemented in python-pptx
+            logger.warning("Encountered an unimplemented shape type.")
+
         return False
 
     def _is_table(self, shape):
-        if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.TABLE:
-            return True
+        try:
+            if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.TABLE:
+                return True
+        except NotImplementedError:
+            # # https://python-pptx.readthedocs.io/en/latest/_modules/pptx/shapes/autoshape.html
+            # Not all shape types are implemented in python-pptx
+            logger.warning("Encountered an unimplemented shape type.")
         return False
 
     def _convert_chart_to_markdown(self, chart):
-        md = "\n\n### Chart"
-        if chart.has_title:
-            md += f": {chart.chart_title.text_frame.text}"
-        md += "\n\n"
-        data = []
-        category_names = [c.label for c in chart.plots[0].categories]
-        series_names = [s.name for s in chart.series]
-        data.append(["Category"] + series_names)
+        try:
+            md = "\n\n### Chart"
+            if chart.has_title:
+                md += f": {chart.chart_title.text_frame.text}"
+            md += "\n\n"
+            data = []
+            category_names = [c.label for c in chart.plots[0].categories]
+            series_names = [s.name for s in chart.series]
+            data.append(["Category"] + series_names)
 
-        for idx, category in enumerate(category_names):
-            row = [category]
-            for series in chart.series:
-                row.append(series.values[idx])
-            data.append(row)
+            for idx, category in enumerate(category_names):
+                row = [category]
+                for series in chart.series:
+                    row.append(series.values[idx])
+                data.append(row)
 
-        markdown_table = []
-        for row in data:
-            markdown_table.append("| " + " | ".join(map(str, row)) + " |")
-        header = markdown_table[0]
-        separator = "|" + "|".join(["---"] * len(data[0])) + "|"
-        return md + "\n".join([header, separator] + markdown_table[1:])
+            markdown_table = []
+            for row in data:
+                markdown_table.append("| " + " | ".join(map(str, row)) + " |")
+            header = markdown_table[0]
+            separator = "|" + "|".join(["---"] * len(data[0])) + "|"
+            return md + "\n".join([header, separator] + markdown_table[1:])
+        except ValueError as e:
+            # Handle the specific error for unsupported chart types
+            if "unsupported plot type" in str(e):
+                return "\n\n[unsupported chart]\n\n"
+        except Exception:
+            # Catch any other exceptions that might occur
+            return "\n\n[unsupported chart]\n\n"
 
 
 class PPTXLoader(BaseLoader):

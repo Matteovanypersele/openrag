@@ -112,6 +112,22 @@ class BaseVectorDB(ABC):
 
 MAX_LENGTH = 65_535
 
+analyzer_params = {
+    "tokenizer": "standard",
+    "filter": [
+        {
+            "type": "stop",  # Specifies the filter type as stop
+            "stop_words": [
+                "<image_description>",
+                "</image_description>",
+                "[Image Placeholder]",
+                "_english_",
+                "_french_",
+            ],  # Defines custom stop words and includes the English and French stop word list
+        }
+    ],
+}
+
 
 @ray.remote
 class MilvusDB(BaseVectorDB):
@@ -247,6 +263,7 @@ class MilvusDB(BaseVectorDB):
             enable_analyzer=True,
             enable_match=True,
             max_length=MAX_LENGTH,
+            analyzer_params=analyzer_params,
         )
 
         schema.add_field(
@@ -507,7 +524,6 @@ class MilvusDB(BaseVectorDB):
     async def delete_file(self, file_id: str, partition: str):
         log = self.logger.bind(file_id=file_id, partition=partition)
         try:
-            self._check_file_exists(file_id, partition)
             res = await self._async_client.delete(
                 collection_name=self.collection_name,
                 filter=f"partition == '{partition}' and file_id == '{file_id}'",

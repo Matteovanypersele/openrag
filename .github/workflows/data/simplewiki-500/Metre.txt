@@ -1,0 +1,4 @@
+A metre (US spelling, "meter") is the basic unit of length in the SI measurement system. The symbol for the metre is m. The first meaning (in the French Revolution) was one ten-millionth of the distance between the Earth's equator and the North Pole along the Paris meridian. The metre is now defined as the distance light travels in a vacuum in 1/299,792,458 of a second.
+In the imperial system of measurement, one yard is 0.9144 metres (after international agreement in 1959), so a metre is very near to 39.37 inches: about 3.281 feet, or 1.0936 yards.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;

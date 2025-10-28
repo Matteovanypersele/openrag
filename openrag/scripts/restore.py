@@ -11,16 +11,6 @@ from components.indexer.vectordb.utils import PartitionFileManager
 from pymilvus import MilvusClient
 from utils.logger import get_logger
 
-# It will create a the Milvus collection if it doesn't exist
-vdb = MilvusDB.options(
-    name="Vectordb", namespace="openrag", lifetime="detached"
-).remote()
-
-ray.get(
-    vdb.__ray_ready__.remote()
-)  # ensure the actor is fully initialized and ready: collection and all created if nont existing
-print("VectorDB (Milvus) actor fully initialized")
-
 
 def read_rdb_section(
     fh: IO[str],
@@ -29,6 +19,7 @@ def read_rdb_section(
     added_documents: Dict[str, Set[str]],
     existing_partitions: Dict[str, Any],
     logger: Any,
+    user_id: int,
     verbose: bool = False,
     dry_run: bool = False,
 ) -> None:
@@ -42,6 +33,7 @@ def read_rdb_section(
         added_documents:      Dict mapping added partitions to sets of added file IDs.
         existing_partitions:  Dict of already existing partitions to avoid duplicates.
         logger:               Logger for status and error reporting.
+        user_id:              User id to pass to PartitionFileManager
         verbose:              If True, logs additional info.
         dry_run:              If True, no changes are made to the database.
     """
@@ -81,7 +73,7 @@ def read_rdb_section(
 
         if not dry_run:
             try:
-                res = pfm.add_file_to_partition(doc["file_id"], part["name"], doc)
+                res = pfm.add_file_to_partition(doc["file_id"], part["name"], doc, user_id)
             except Exception as e:
                 logger.exception(
                     f"{type(e)} in add_file_to_partition({doc['file_id']}, {part['name']}, ...)\n"
@@ -271,11 +263,33 @@ def main():
         action="store_true",
         help="Don't change the target database",
     )
+    parser.add_argument(
+        "-u",
+        "--user-id",
+        default=1,
+        help="Create partitions with this user-id"
+    )
     parser.add_argument("input", help="input file name")
 
     args = parser.parse_args()
 
     logger = get_logger()
+
+
+    try:
+        # It will create a the Milvus collection if it doesn't exist
+        vdb_tmp = MilvusDB.options(
+            name="Vectordb", namespace="openrag", lifetime="detached"
+        ).remote()
+
+        ray.get(
+            vdb_tmp.__ray_ready__.remote()
+        )  # ensure the actor is fully initialized and ready: collection and all created if nont existing
+        print("VectorDB (Milvus) actor fully initialized")
+    except Exception as e:
+        logger.exception(f'Failed while trying to create Milvus collection: {e}')
+        # TODO: stop execution here
+
 
     rdb, vdb = load_openrag_config(logger)
 
@@ -323,6 +337,7 @@ def main():
                         added_documents,
                         existing_partitions,
                         logger,
+                        args.user_id,
                         args.verbose,
                         args.dry_run,
                     )

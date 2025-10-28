@@ -1,10 +1,8 @@
 x-openrag: &openrag_template
-  image: rcordier/openrag:latest
+  image: linagoraai/openrag:macOS_poc
   volumes:
-    - ./.hydra_config:/app/.hydra_config
     - ./data:/app/data
     - ./.cache/huggingface:/app/model_weights # Model weights for RAG
-    - ./openrag:/app/openrag # For dev mode
     - ./ray_mount/.env:/ray_mount/.env # Shared environment variables
     - ./ray_mount/logs:/app/logs
   ports:
@@ -16,6 +14,17 @@ x-openrag: &openrag_template
         - openrag
   env_file:
     - .env
+  environment:
+    - APP_PORT=8090
+    - AUTH_TOKEN=OpenRAG
+    - RERANKER_ENABLED=false
+    - MARKER_MAX_PROCESSES=1
+    - INDEXERUI_COMPOSE_FILE=true           # Does not serve any purpose but needs to be enabled until PR is merged
+    - INDEXERUI_PORT=8067                   # Here as well
+    - INDEXERUI_URL=http://localhost:8067   # Here as well
+    - RAY_DEDUP_LOGS=0
+    - RAY_ENABLE_UV_RUN_RUNTIME_ENV=0s
+    - RAY_memory_monitor_refresh_ms=0
   shm_size: 10.24gb
 
 services:
@@ -97,12 +106,10 @@ services:
       - "minio"
 
   indexer-ui:
-    build: 
-      context: ./extern/indexer-ui
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-        - VITE_INCLUDE_CREDENTIALS=${VITE_INCLUDE_CREDENTIALS}
+    image: linagoraai/indexer-ui:latest
     ports:
       - "8067:3000"
+    environment:
+      - API_BASE_URL=http://localhost:8090
+      - INCLUDE_CREDENTIALS=true
     restart: unless-stopped

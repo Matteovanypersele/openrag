@@ -54,7 +54,7 @@ UV_CACHE_DIR=/tmp/uv-cache
 + VDB_HOST=<HOST-IP>                          # ✅ instead of VDB_HOST=milvus
 ```
 
-:::tip[🧠 **Tips**]
+:::tip[**Tips**]
 - `RAY_NUM_GPUS` defines **per-actor resource requirements**. Ray will not start a task until these resources are available on one of the nodes.  
 For example, if one indexation consumes ~1GB of VRAM and your GPU has 4GB, setting `RAY_NUM_GPUS=0.25` allows you to run **4 indexers per node**. In a 2-node cluster, that means up to **8 concurrent indexation tasks**.  
 

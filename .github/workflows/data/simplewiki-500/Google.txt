@@ -1,0 +1,17 @@
+Google is an American multinational corporation from the United States. Known for creating and running one of the largest search engines on the World Wide Web, also known as the (WWW). Every day more than a billion people use it. Google's headquarters (known as the "Googleplex") is in Mountain View, California, part of Silicon Valley. The motto of Google is "Do the right thing". 
+Overview.
+Google's search engine can find pictures, videos, news, Usenet newsgroups, and things to buy online. By June 2004, Google had 4.28 billion web pages on its database, 880 million pictures and 845 million Usenet messages—six billion things. 
+Google's American website has an Alexa rank of 1, meaning it is the most widely visited website in the world. It is so widely known that people sometimes use the word "google" as a verb that means "to search for something on Google". Because more than half of people on the web use it, "google" has also been used to mean "to search the web". Most importantly, Google created the Google Gnome Game in June of 2010.
+History.
+Larry Page and Sergey Brin, two students at Stanford University, USA, started BackRub in early 1996. They made it into a company, Google Inc., on September 7, 1998, at a friend's garage in Menlo Park, California. In February 1999, the company moved to 165 University Ave., Palo Alto, California, and then later moved to Googleplex.
+In September 2001, Google's rating system (PageRank, for saying which information is more helpful) got a U.S. Patent. The patent was to Stanford University, with Lawrence (Larry) Page as the inventor (the person who first had the idea). Google makes a percentage of its money through America Online and InterActiveCorp. It has a special group known as the Partner Solutions Organization (PSO) which helps make contracts, helps to make accounts better and gives engineering help.
+Since June 1, 2016, Google has been owned by a holding company called Alphabet Inc.. That company has taken over some of Google's other projects, such as its driverless cars. It is a public company that trades on the NASDAQ under the ticker symbols GOOG and GOOGL.
+Advertising.
+Google makes money by advertising. People or companies who want people to buy their product, service, or ideas give Google money, and Google shows an advertisement to people Google thinks will click on the advertisement. 
+Google only gets money when people click on the link, so it tries to know as much about people as possible to only show the advertisement to the "right people". It does this with Google Analytics, which sends data back to Google whenever someone visits a website. From this and other data, Google makes a profile about the person and then uses this profile to figure out which advertisements to show.
+Branding.
+The name "Google" is a play of the word "googol". Milton Sirotta, nephew of U.S. mathematician Edward Kasner, made this word in 1937, for the number 1 followed by one hundred zeroes (10100). 
+Google uses this word because the company wants to make lots of stuff on the Web easy to find and use. Andy Bechtolsheim thought of the name. The name for Google's main office, the "Googleplex," is a play on a different, even bigger number, the "googolplex", which is 1 followed by one googol of zeroes 1010100.
+References.
+&lt;templatestyles src="Reflist/styles.css" /&gt;
+Notes

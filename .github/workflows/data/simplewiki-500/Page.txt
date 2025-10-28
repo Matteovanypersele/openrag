@@ -1,0 +1,2 @@
+A page can be different things:
+&lt;templatestyles src="Dmbox/styles.css" /&gt;

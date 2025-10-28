@@ -11,7 +11,6 @@ from fastapi import (
     Form,
     HTTPException,
     Request,
-    Response,
     UploadFile,
     status,
 )
@@ -162,10 +161,16 @@ async def delete_file(
     partition: str,
     file_id: str,
     indexer=Depends(get_indexer),
+    vectordb=Depends(get_vectordb),
     user=Depends(require_partition_editor),
 ):
+    if not await vectordb.file_exists.remote(file_id, partition):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"'{file_id}' not found in partition '{partition}'",
+        )
     await indexer.delete_file.remote(file_id, partition)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/partition/{partition}/file/{file_id}")
@@ -185,7 +190,7 @@ async def put_file(
     if not await vectordb.file_exists.remote(file_id, partition):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File '{file_id}' not found in partition '{partition}'.",
+            detail=f"'{file_id}' not found in partition '{partition}'",
         )
 
     # Delete the existing file from the vector database

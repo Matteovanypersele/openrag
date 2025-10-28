@@ -1,17 +1,16 @@
 # Import necessary modules and classes
 from abc import ABC, abstractmethod
-from pathlib import Path
 
+from components.prompts import HYDE_PROMPT, MULTI_QUERY_PROMPT
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from omegaconf import OmegaConf
 from utils.dependencies import get_vectordb
+from utils.logger import get_logger
 
-from .utils import load_sys_template
-
-CRITERIAS = ["similarity"]
+logger = get_logger()
 
 
 class ABCRetriever(ABC):
@@ -20,10 +19,9 @@ class ABCRetriever(ABC):
     @abstractmethod
     def __init__(
         self,
-        criteria: str = "similarity",
         top_k: int = 6,
         similarity_threshold: int = 0.95,
-        **extra_args,
+        **kwargs,
     ) -> None:
         pass
 
@@ -34,26 +32,10 @@ class ABCRetriever(ABC):
 
 # Define the Simple Retriever class
 class BaseRetriever(ABCRetriever):
-    def __init__(
-        self,
-        criteria: str = "similarity",
-        top_k: int = 6,
-        similarity_threshold: int = 0.95,
-        logger=None,
-        **extra_args,
-    ) -> None:
-        """Constructs all the necessary attributes for the Retriever object.
-
-        Args:
-            criteria (str, optional): Retrieval criteria. Defaults to "similarity".
-            top_k (int, optional): top_k most similar documents to retrieve. Defaults to 6.
-        """
+    def __init__(self, top_k=6, similarity_threshold=0.95, **kwargs):
+        super().__init__(top_k, similarity_threshold, **kwargs)
         self.top_k = top_k
         self.similarity_threshold = similarity_threshold
-        if criteria not in CRITERIAS:
-            ValueError(f"Invalid type. Choose from {CRITERIAS}")
-        self.criteria = criteria
-        self.logger = logger
 
     async def retrieve(
         self,
@@ -71,68 +53,40 @@ class BaseRetriever(ABCRetriever):
 
 
 class SingleRetreiver(BaseRetriever):
-    def __init__(
-        self,
-        criteria: str = "similarity",
-        top_k: int = 6,
-        similarity_threshold: int = 0.95,
-        logger=None,
-        **extra_args,
-    ) -> None:
-        super().__init__(criteria, top_k, similarity_threshold, logger, **extra_args)
+    pass
 
 
 class MultiQueryRetriever(BaseRetriever):
     def __init__(
         self,
-        criteria: str = "similarity",
-        top_k: int = 6,
-        similarity_threshold: int = 0.95,
-        logger=None,
-        **extra_args,
-    ) -> None:
-        """
-        The MultiQueryRetriever class is a subclass of the Retriever class that retrieves relevant documents based on multiple queries.
-        Given a query, multiple similar are generated with an llm. retrieval is done with each one them and finally a subset is chosen.
+        top_k=6,
+        similarity_threshold=0.95,
+        k_queries: int = 3,
+        llm: ChatOpenAI = None,
+        **kwargs,
+    ):
+        super().__init__(top_k, similarity_threshold, **kwargs)
+        self.k_queries = k_queries
+        self.llm = llm
 
-        Attributes
-        ----------
-        Args:
-            criteria (str, optional): Retrieval criteria. Defaults to "similarity".
-            top_k (int, optional): top_k most similar documents to retrieve. Defaults to 6.
-            extra_args (dict): contains additionals arguments for this type of retriever.
-        """
-        super().__init__(criteria, top_k, similarity_threshold, logger, **extra_args)
+        if llm is None:
+            raise ValueError("llm must be provided for MultiQueryRetriever")
 
-        try:
-            llm: ChatOpenAI = extra_args.get("llm")
-            if not isinstance(llm, ChatOpenAI):
-                raise TypeError(f"`llm` should be of type {ChatOpenAI}")
-
-            k_queries = extra_args.get("k_queries")
-            if not isinstance(k_queries, int):
-                raise TypeError(f"`k_queries` should be of type {int}")
-            self.k_queries = k_queries
-
-            pmpt_tmpl_path = extra_args.get("prompts_dir") / extra_args.get(
-                "prompt_tmpl"
-            )
-            multi_query_tmpl = load_sys_template(pmpt_tmpl_path)
-            prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(
-                multi_query_tmpl
-            )
-            self.generate_queries = (
-                prompt | llm | StrOutputParser() | (lambda x: x.split("[SEP]"))
-            )
-
-        except Exception as e:
-            raise KeyError(f"An Error has occured: {e}")
+        prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(
+            MULTI_QUERY_PROMPT
+        )
+        self.generate_queries = (
+            prompt | llm | StrOutputParser() | (lambda x: x.split("[SEP]"))
+        )
 
     async def retrieve(self, partition: list[str], query: str) -> list[Document]:
         db = get_vectordb()
-        # generate different perspectives of the query
+        logger.debug("Generating multiple queries", k_queries=self.k_queries)
         generated_queries = await self.generate_queries.ainvoke(
-            {"query": query, "k_queries": self.k_queries}
+            {
+                "query": query,
+                "k_queries": self.k_queries,
+            }
         )
         chunks = await db.async_multi_query_search.remote(
             queries=generated_queries,
@@ -146,41 +100,28 @@ class MultiQueryRetriever(BaseRetriever):
 class HyDeRetriever(BaseRetriever):
     def __init__(
         self,
-        criteria: str = "similarity",
-        top_k: int = 6,
-        similarity_threshold: int = 0.95,
-        logger=None,
-        **extra_args,
-    ) -> None:
-        super().__init__(criteria, top_k, similarity_threshold, logger, **extra_args)
+        top_k=6,
+        similarity_threshold=0.95,
+        llm: ChatOpenAI = None,
+        combine: bool = False,
+        **kwargs,
+    ):
+        super().__init__(top_k, similarity_threshold, **kwargs)
+        if llm is None:
+            raise ValueError("llm must be provided for HyDeRetriever")
 
-        try:
-            llm = extra_args.get("llm")
-            if not isinstance(llm, ChatOpenAI):
-                raise TypeError(f"`llm` should be of type {ChatOpenAI}")
+        self.combine = combine
+        self.llm = llm
 
-            pmpt_tmpl_path = extra_args.get("prompts_dir") / extra_args.get(
-                "prompt_tmpl"
-            )
-            hyde_template = load_sys_template(pmpt_tmpl_path)
-            prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(hyde_template)
-
-            self.generate_hyde = prompt | llm | StrOutputParser()
-            self.combine = extra_args.get("combine", False)
-
-        except Exception as e:
-            raise ArithmeticError(f"An error occured: {e}")
+        prompt: ChatPromptTemplate = ChatPromptTemplate.from_template(HYDE_PROMPT)
+        self.hyde_generator = prompt | llm | StrOutputParser()
 
     async def get_hyde(self, query: str):
-        self.logger.debug("Generating HyDe Document")
-        hyde_document = await self.generate_hyde.ainvoke({"query": query})
+        logger.debug("Generating HyDe Document")
+        hyde_document = await self.hyde_generator.ainvoke({"query": query})
         return hyde_document
 
-    async def retrieve(
-        self,
-        partition: list[str],
-        query: str,
-    ) -> list[Document]:
+    async def retrieve(self, partition: list[str], query: str) -> list[Document]:
         db = get_vectordb()
         hyde = await self.get_hyde(query)
         queries = [hyde]
@@ -203,17 +144,14 @@ class RetrieverFactory:
     }
 
     @classmethod
-    def create_retriever(cls, config: OmegaConf, logger) -> ABCRetriever:
+    def create_retriever(cls, config: OmegaConf) -> ABCRetriever:
         retreiverConfig = OmegaConf.to_container(config.retriever, resolve=True)
-        retreiverConfig["logger"] = logger
-        retreiverConfig["prompts_dir"] = Path(config.paths["prompts_dir"])
 
         retriever_type = retreiverConfig.pop("type")
         retriever_cls = RetrieverFactory.RETRIEVERS.get(retriever_type, None)
+
         if retriever_type is None:
             raise ValueError(f"Unknown retriever type: {retriever_type}")
 
-        if retriever_type in ["hyde", "multiQuery"]:
-            retreiverConfig["llm"] = ChatOpenAI(**config.vlm)
-
+        retreiverConfig["llm"] = ChatOpenAI(**config.llm)
         return retriever_cls(**retreiverConfig)
