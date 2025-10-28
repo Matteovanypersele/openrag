@@ -46,6 +46,7 @@ Get Deleted User Should Fail
     Should Contain    ${json}[detail]    VDB_USER_NOT_FOUND
 
 Unauthorized Access Should Fail
+    Skip If Auth Disabled
     &{bad_headers}=    Create Dictionary    Authorization=Bearer invalidtoken
     ${response}=    GET    ${USERS_ENDPOINT}    headers=${bad_headers}    expected_status=403
     ${json}=    Set Variable    ${response.json()}

@@ -80,6 +80,7 @@ Search Multiple Partitions As Admin
 
 Search Multiple Partitions As User With Unauthorized Access
     [Documentation]    Regular user searches across two partitions, one of which they cannot access → should get 403.
+    Skip If Auth Disabled
     &{user_headers}=    Create Dictionary    Authorization=Bearer ${USER_TOKEN}
     ${partitions_list}=    Create List    ${PARTITION_1}    ${PARTITION_2}
     ${params}=    Create Dictionary
@@ -90,6 +91,7 @@ Search Multiple Partitions As User With Unauthorized Access
 
 Search Multiple Partitions As User
     [Documentation]    Regular user should only see results in partitions they have access to.
+    Skip If Auth Disabled
     &{user_headers}=    Create Dictionary    Authorization=Bearer ${USER_TOKEN}
     ${params}=    Create Dictionary
     ...    partitions=all
@@ -104,6 +106,7 @@ Search Multiple Partitions As User
 
 Search Multiple Partitions As User Without Access
     [Documentation]    When user explicitly queries a partition they don’t own, expect 403 or empty results.
+    Skip If Auth Disabled
     &{user_headers}=    Create Dictionary    Authorization=Bearer ${USER_TOKEN}
     ${params}=    Create Dictionary
     ...    partitions=${PARTITION_2}

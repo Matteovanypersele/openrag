@@ -32,7 +32,6 @@ Create User For OpenAI Tests
     Set Suite Variable    ${USER_HEADERS}    ${user_headers}
 
 Create A Partition For The User
-    [Documentation]    Admin creates a partition that belongs to the created user.
     ${response}=    POST    ${PARTITIONS_ENDPOINT}/${PARTITION_USER}    headers=${USER_HEADERS}    expected_status=201
 
 
@@ -54,6 +53,7 @@ List Models As Admin
 
 List Models As User
     [Documentation]    Regular user should only see openrag-all and their own openrag-${PARTITION_USER} model.
+    Skip If Auth Disabled
     ${response}=    GET    ${MODELS_ENDPOINT}    headers=${USER_HEADERS}    expected_status=200
     ${json}=    Set Variable    ${response.json()}
     ${models}=    Get From Dictionary    ${json}    data
@@ -120,6 +120,8 @@ Completion As User
 # CLEANUP
 # ==========================================================
 
+Cleanup Partition
+    Delete Partition    ${PARTITION_USER}    ${USER_HEADERS}
 Cleanup User
     [Documentation]    Delete the user created for the tests.
     ${response}=    DELETE    ${USERS_ENDPOINT}/${USER_ID}    headers=${HEADERS}    expected_status=204

@@ -108,8 +108,11 @@ Delete File
     RETURN    None
 
 Delete Partition
-    [Arguments]    ${part}    ${expected_status}=204
-    ${response}=    DELETE    ${BASE_URL}/partition/${part}  headers=${HEADERS}  expected_status=${expected_status}
+    [Arguments]    ${part}    ${headers}=${HEADERS}    ${expected_status}=204
+    ${response}=    DELETE
+    ...    ${BASE_URL}/partition/${part}
+    ...    headers=${headers}
+    ...    expected_status=${expected_status}
     RETURN    None
 
 Get File Metadata
@@ -147,3 +150,5 @@ Create User
     ...    expected_status=${expected_status}
     RETURN    ${response.json()}
     
+Skip If Auth Disabled
+    Run Keyword If    '${AUTH_TOKEN}' == 'none'    Skip   Auth is disabled

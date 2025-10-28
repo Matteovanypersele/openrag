@@ -73,6 +73,7 @@ List Partitions As Admin
     List Should Contain Value    ${partition_names}    ${PARTITION_2}
 
 List Partitions As User
+    Skip If Auth Disabled
     &{user_headers}=    Create Dictionary    Authorization=Bearer ${USER_TOKEN}
     ${response}=    GET    ${PARTITIONS_ENDPOINT}    headers=${user_headers}    expected_status=200
     ${json}=    Set Variable    ${response.json()}
