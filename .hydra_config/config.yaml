@@ -133,6 +133,15 @@ loader:
     silence_thresh_db: ${oc.decode:${oc.env:TRANSCRIBER_SILENCE_THRESH_DB, -40}}
     min_silence_len_ms: ${oc.decode:${oc.env:TRANSCRIBER_MIN_SILENCE_LEN_MS, 500}}
     max_concurrent_chunks: ${oc.decode:${oc.env:TRANSCRIBER_MAX_CONCURRENT_CHUNKS, 20}}
+  openai:
+    base_url: ${oc.env:OPENAI_LOADER_BASE_URL, http://openai:8000/v1}
+    api_key: ${oc.env:OPENAI_LOADER_API_KEY, EMPTY}
+    model: ${oc.env:OPENAI_LOADER_MODEL, dotsocr-model}
+    temperature: ${oc.decode:${oc.env:OPENAI_LOADER_TEMPERATURE, 0.2}}
+    timeout: ${oc.decode:${oc.env:OPENAI_LOADER_TIMEOUT, 180}}
+    max_retries: ${oc.decode:${oc.env:OPENAI_LOADER_MAX_RETRIES, 2}}
+    top_p: ${oc.decode:${oc.env:OPENAI_LOADER_TOP_P, 0.9}}
+    concurrency_limit: ${oc.decode:${oc.env:OPENAI_LOADER_CONCURRENCY_LIMIT, 20}}
 
 ray:
   num_gpus: ${oc.decode:${oc.env:RAY_NUM_GPUS, 0.01}}
@@ -155,3 +164,4 @@ ray:
     num_replicas: ${oc.decode:${oc.env:RAY_SERVE_NUM_REPLICAS, 1}}
     host: ${oc.env:RAY_SERVE_HOST, 0.0.0.0}
     port: ${oc.env:RAY_SERVE_PORT, 8080}
+    chainlit_port: ${oc.env:CHAINLIT_PORT, 8090}

@@ -19,6 +19,7 @@ x-openrag: &openrag_template
   ports:
     - ${APP_PORT:-8080}:${APP_iPORT:-8080}
     - ${RAY_DASHBOARD_PORT:-8265}:8265 # Disable when in cluster mode
+    - ${CHAINLIT_PORT:-8090}:${CHAINLIT_PORT:-8090}
   networks:
     default:
       aliases:
@@ -69,7 +70,7 @@ services:
       - "${INDEXERUI_PORT:-3042}:3000"
     restart: unless-stopped
 
-  # GPU - default 
+  # GPU - default
   openrag:
     <<: *openrag_template
     deploy:
@@ -78,9 +79,9 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [ gpu ]
+              capabilities: [gpu]
     profiles:
-      - ''
+      - ""
     depends_on:
       rdb:
         condition: service_started
@@ -94,7 +95,7 @@ services:
     <<: *openrag_template
     deploy: {}
     profiles:
-      - 'cpu'
+      - "cpu"
     depends_on:
       rdb:
         condition: service_started
@@ -120,10 +121,10 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: all 
+              count: all
               capabilities: [gpu]
     profiles:
-      - '' # Empty string gives default behavior (but does not run when cpu requested)
+      - "" # Empty string gives default behavior (but does not run when cpu requested)
 
   vllm-cpu:
     <<: *vllm_template
@@ -147,4 +148,4 @@ services:
     # for aarch64 yet. On aarch64 max-num-batched-tokens must be equal max-model-len for now (without chunked prefill).
     # For details see https://github.com/vllm-project/vllm/issues/21179
     profiles:
-      - 'cpu'
+      - "cpu"

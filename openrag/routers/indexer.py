@@ -11,6 +11,7 @@ from fastapi import (
     Form,
     HTTPException,
     Request,
+    Response,
     UploadFile,
     status,
 )
@@ -170,7 +171,7 @@ async def delete_file(
             detail=f"'{file_id}' not found in partition '{partition}'",
         )
     await indexer.delete_file.remote(file_id, partition)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/partition/{partition}/file/{file_id}")

@@ -1,0 +1,7 @@
+# 🦫 OpenRag — The Open RAG Experimentation Playground
+
+![RAG Architecture](./RAG_architecture.png)
+
+[OpenRag](https://open-rag.ai/) is a lightweight, modular and extensible Retrieval-Augmented Generation (RAG) framework designed to explore and test advanced RAG techniques — 100% open source and focused on experimentation, not lock-in.
+
+> Built by the Linagora, OpenRag offers a sovereign-by-design alternative to mainstream RAG stacks.
