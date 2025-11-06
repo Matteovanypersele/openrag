@@ -1,0 +1,69 @@
+---
+title: SQL Migrations with Alembic
+---
+Migrations should be performed after each modification of the SQL schema. Since we use SQLAlchemy as our ORM, we leverage **Alembic** to handle database migrations seamlessly.
+
+## Migration Workflow
+
+:::caution
+Before running any migration, ensure your stack is stopped and create a backup of your database in case anything goes wrong.
+:::
+
+### Step 1: Generate a Migration Script
+:::tip[When to generate a migration script ?]
+This command should be run whenever you make changes to the SQLAlchemy models. If not, skip to Step 2.
+:::
+
+When generating migrations, always provide a clear, descriptive revision message. This helps maintain a readable migration history.
+
+**Example revision messages:**
+- `"create users table"`
+- `"add index to email column"`
+- `"rename column full_name to name"`
+- `"add foreign key from orders to users"`
+- `"remove deprecated table sessions"`
+- `"update default value for created_at"`
+
+**Command:**
+
+:::danger[Before generating a migration script]
+Replace **`<revision_message>`** with your descriptive message before running the following command. The command will automatically generate a new migration script based on detected model changes.
+:::
+
+```bash "<revision_message>" title="Generate a migration script..."
+docker compose up -d rdb
+docker compose \
+    run --no-deps --build --rm \
+    --entrypoint "uv run alembic -c /app/openrag/scripts/migrations/alembic/alembic.ini revision --autogenerate -m '<revision_message>'" \
+    openrag
+```
+
+It will create a new migration script in the `openrag/scripts/migrations/alembic/versions/` directory.
+
+### Step 2: Apply the Migration
+
+Once you've reviewed the generated migration script and confirmed it looks correct, apply it to your database:
+
+```bash title="Apply migrations"
+docker compose up -d rdb
+docker compose \
+    run --no-deps --build --rm \
+    --entrypoint "uv run alembic -c /app/openrag/scripts/migrations/alembic/alembic.ini upgrade head" \
+    openrag; docker compose down
+```
+
+This upgrades your database schema to the latest revision.
+
+:::tip[Automatic Migrations on Code Update]
+When you pull the latest changes to your local code, check if a new migration script has been added. If so, make sure to apply the migration before restarting the service.
+:::
+
+---
+
+## Best Practices
+
+- **Always review** generated migration scripts before applying them
+- **Test migrations** in a development environment first with the entire stack down
+- **Keep revision messages** clear and concise
+- **Backup your database** before running migrations in production
+- **Version control** all migration scripts
