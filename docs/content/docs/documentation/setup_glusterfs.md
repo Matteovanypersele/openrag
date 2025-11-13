@@ -17,7 +17,7 @@ This includes:
 ## 1️⃣ Setup VPN (if required)
 
 If your Ray nodes are **not on the same local network**, set up a VPN between them first.  
-➡ Refer to the dedicated [VPN setup guide](/documentation/setup_vpn/).  
+➡ Refer to the dedicated [VPN setup guide](/openrag/documentation/setup_vpn/).  
 You can skip this step if your nodes are already on the same LAN.
 
 ---

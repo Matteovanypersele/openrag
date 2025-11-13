@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://astro.build/config
 export default defineConfig({
   srcDir: './docs',
+  base: '/openrag/',
   integrations: [
       starlight({
           title: 'Docs',

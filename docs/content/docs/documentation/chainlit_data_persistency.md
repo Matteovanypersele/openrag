@@ -8,7 +8,7 @@ This project uses a [dockerized fork](https://github.com/Chainlit/chainlit-datal
 In OpenRAG, one can activate **`Chainlit data layer`** following these steps:
 
 ### Step 1: Set up authentication
-In fact, chainlit authentication is necessary for data persistency. Set chainlit authentication if not already done (refer to the [chainlit auth guide](/documentation/setup_chainlit_ui_auth))
+In fact, chainlit authentication is necessary for data persistency. Set chainlit authentication if not already done (refer to the [chainlit auth guide](/openrag/documentation/api/#-authentication)
 
 ### Step 2: Add the following variables
 To deploy the Chainlit data layer service, add the following variable:

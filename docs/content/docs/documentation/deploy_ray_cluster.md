@@ -73,7 +73,7 @@ If other GPU-intensive services are running on your nodes (e.g. vLLM, the RAG AP
 All nodes need to access shared configuration and data folders.  
 We recommend using **GlusterFS** for this.
 
-➡ Follow the [GlusterFS Setup Guide](/documentation/setup_glusterfs/) to configure:
+➡ Follow the [GlusterFS Setup Guide](/openrag/documentation/setup_glusterfs/) to configure:
 
 - Shared access to:
   - `.env`
