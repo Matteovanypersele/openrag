@@ -12,6 +12,16 @@ title: ✨ Key Features
 
 All files are intelligently converted to **Markdown format** with images replaced by AI-generated captions, ensuring consistent processing across all document types.
 
+### 🎵 Audio File Processing
+Audio files are processed using Whisper deployed with vLLM for reliable transcription. To enable audio file indexing, configure the transcriber service:
+
+```bash
+# .env
+TRANSCRIBER_COMPOSE=extern/transcriber.yaml
+```
+
+
+
 ### 🎛️ Native Web-Based Indexer UI
 Experience intuitive document management through our built-in web interface.
 

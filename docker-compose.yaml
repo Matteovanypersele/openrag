@@ -2,6 +2,7 @@ include:
   - vdb/milvus.yaml
   - ${CHAINLIT_DATALAYER_COMPOSE:-extern/dummy.yaml}
   - extern/infinity.yaml
+  - ${TRANSCRIBER_COMPOSE:-extern/dummy.yaml}
 
 x-openrag: &openrag_template
   image: ghcr.io/linagora/openrag:dev-latest
