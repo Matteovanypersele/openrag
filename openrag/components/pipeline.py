@@ -71,7 +71,6 @@ class RagPipeline:
         self.chat_history_depth = config.rag["chat_history_depth"]
 
         self.llm_client = LLM(config.llm, logger)
-        self.vlm_client = LLM(config.vlm, logger)
         self.contextualizer = AsyncOpenAI(
             base_url=config.llm["base_url"], api_key=config.llm["api_key"]
         )

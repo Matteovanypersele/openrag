@@ -1,6 +1,6 @@
 defaults:
   - _self_ # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
-  - chunker: recursive_splitter # markdown_splitter # semantic_splitter #
+  - chunker: ${oc.env:CHUNKER, recursive_splitter} # recursive_splitter, semantic_splitter, markdown_splitter
   - retriever: ${oc.env:RETRIEVER_TYPE, single} # single # multiQuery # hyde
   - rag: ChatBotRag
 
@@ -37,7 +37,7 @@ vectordb:
   port: ${oc.env:VDB_iPORT, 19530}
   connector_name: ${oc.env:VDB_CONNECTOR_NAME, milvus}
   collection_name: ${oc.env:VDB_COLLECTION_NAME, vdb_test}
-  hybrid_search: true
+  hybrid_search: ${oc.env:VDB_HYBRID_SEARCH, true}
   enable: true
 
 rdb:
@@ -63,7 +63,7 @@ map_reduce:
   max_total_documents: ${oc.decode:${oc.env:MAP_REDUCE_MAX_TOTAL_DOCUMENTS, 20}}
 
   # Enable debug logging for map & reduce
-  debug: ${oc.decode:${oc.env:MAP_REDUCE_DEBUG, true}}
+  debug: ${oc.decode:${oc.env:MAP_REDUCE_DEBUG, false}}
 
 verbose:
   level: ${oc.env:LOG_LEVEL, DEBUG}
@@ -86,8 +86,7 @@ prompts:
 
 loader:
   image_captioning: ${oc.decode:${oc.env:IMAGE_CAPTIONING, true}}
-  save_markdown: ${oc.decode:${oc.env:SAVE_MARKDOWN, true}}
-  audio_model: ${oc.env:WHISPER_MODEL, base} # tiny, base, small, medium, large-v1, large-v2, large-v3
+  save_markdown: ${oc.decode:${oc.env:SAVE_MARKDOWN, false}}
   mimetypes:
     text/plain: .txt
     text/markdown: .md
