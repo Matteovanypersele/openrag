@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from components.prompts import CHUNK_CONTEXTUALIZER
-from components.utils import get_llm_semaphore, load_config
+from components.utils import get_vlm_semaphore, load_config
 from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -63,7 +63,7 @@ class BaseChunker(ABC):
         self, first_chunks: str, prev_chunk: str, chunk: str, source: str
     ) -> str:
         """Generate context for a given chunk of text."""
-        async with get_llm_semaphore():
+        async with get_vlm_semaphore():
             try:
                 return await self.context_generator.ainvoke(
                     {

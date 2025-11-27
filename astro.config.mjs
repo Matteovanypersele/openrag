@@ -23,7 +23,7 @@ export default defineConfig({
           },
           tableOfContents:{
             minHeadingLevel:2,
-            maxHeadingLevel:4,
+            maxHeadingLevel:6,
           },
           social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/linagora/openrag' }],
           sidebar: [
