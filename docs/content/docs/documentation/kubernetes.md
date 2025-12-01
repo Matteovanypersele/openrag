@@ -21,7 +21,7 @@ This guide explains how to deploy the **OpenRAG** stack on a Kubernetes cluster 
 
    - Copy or create a new `values.yaml` at the root of your repo.
    - You can see the full example file inside the chart:
-     [../charts/openrag-stack/values.yaml](/charts/openrag-stack/values.yaml)
+     [values.yaml](https://github.com/linagora/openrag/blob/dev/charts/openrag-stack/values.yaml)
    - Customize the values you need (e.g., image tags, resources, ingress host, storage class, environment variables, secrets).
 
 2. **Set environment and secrets**:
