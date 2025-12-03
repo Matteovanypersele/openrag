@@ -48,9 +48,9 @@ async def serialize_file(task_id: str, path: str, metadata: Optional[Dict] = {})
     import ray
     from ray.exceptions import TaskCancelledError
 
-    serializer_queue = ray.get_actor("SerializerQueue", namespace="openrag")
+    serializer = ray.get_actor("DocSerializer", namespace="openrag")
     # Kick off the remote task
-    future = serializer_queue.submit_document.remote(task_id, path, metadata=metadata)
+    future = serializer.serialize_document.remote(task_id, path, metadata=metadata)
 
     # Wait for it to complete, with timeout
     ready, _ = await asyncio.to_thread(ray.wait, [future])
