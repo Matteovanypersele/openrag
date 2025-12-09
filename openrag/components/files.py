@@ -1,11 +1,35 @@
-from pathlib import Path
-import aiofiles
-from fastapi import UploadFile
-import consts
-import time
-import secrets
 import asyncio
+import re
+import secrets
+import time
+from pathlib import Path
 from typing import Dict, Optional
+
+import aiofiles
+import consts
+from fastapi import UploadFile
+
+
+def sanitize_filename(filename: str) -> str:
+    # Split filename into name and extension
+    path = Path(filename)
+    name = path.stem
+    ext = path.suffix
+
+    # Remove special characters (keep only word characters and hyphens temporarily)
+    name = re.sub(r"[^\w\-]", "_", name)
+
+    # Replace hyphens with underscores
+    name = name.replace("-", "_")
+
+    # Collapse multiple underscores
+    name = re.sub(r"_+", "_", name)
+
+    # Remove leading/trailing underscores
+    name = name.strip("_")
+
+    # Reconstruct filename
+    return name + ext
 
 
 def make_unique_filename(filename: str) -> Path:
@@ -64,6 +88,5 @@ async def serialize_file(task_id: str, path: str, metadata: Optional[Dict] = {})
         except Exception:
             raise
     else:
-
         ray.cancel(future, recursive=True)
         raise TimeoutError(f"Serialization task {task_id} timed out after seconds")
