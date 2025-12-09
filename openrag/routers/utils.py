@@ -230,6 +230,7 @@ async def validate_file_format(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=details,
         )
+
     return file
 
 
