@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 import consts
-from components.files import sanitize_filename
 from config import load_config
 from fastapi import Depends, Form, HTTPException, Request, UploadFile, status
 from openai import AsyncOpenAI
@@ -232,7 +231,6 @@ async def validate_file_format(
             detail=details,
         )
 
-    file.filename = sanitize_filename(file.filename)
     return file
 
 
