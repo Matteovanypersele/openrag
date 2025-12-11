@@ -4,7 +4,7 @@ BACKUP_DIR=$1
 BACKUP_FILE=$2
 PARTITION_NAME=$3
 
-docker compose \
+docker compose --env-file .env \
     run \
     --build \
     --rm \
