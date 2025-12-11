@@ -10,7 +10,7 @@ It's better to stop `openrag-cpu` (or `openrag`) service before starting backup.
 :::
 
 ```bash
-docker compose \
+docker compose --env-file .env \
     run \
     --build \
     --rm \
@@ -23,7 +23,7 @@ docker compose \
 :::info
 By default backup script creates plan text uncomressed file. To make things faster you can use multithread compressor the following way:
 ```bash
-docker compose \
+docker compose --env-file .env \
     run \
     --build \
     --rm \
@@ -37,7 +37,8 @@ docker compose \
 ## Backup all partitions
 
 ```bash
-docker compose run --build --rm \
+docker compose --env-file .env \
+  run --build --rm \
   -v ~/backup:/backup:rw \
   --entrypoint "uv run /app/openrag/scripts/backup.py -o /backup/test.openrag" \
   openrag
@@ -51,7 +52,7 @@ docker compose run --build --rm \
 Start with dry run to ensure the backup file is correct:
 
 ```bash
-docker compose \
+docker compose --env-file .env \
     run \
     --build \
     --rm \
@@ -62,7 +63,7 @@ docker compose \
 Backup files are expected to be in `/my-backup-dir/`. If the dry run is successful, run the following script to insert the data :
 
 ```bash
-docker compose \
+docker compose --env-file .env \
     run \
     --build \
     --rm \
@@ -74,7 +75,8 @@ docker compose \
 ## Restore all partitions
 
 ```bash
-docker compose run --build --rm \
+docker compose --env-file .env \
+  run --build --rm \
   -v ~/backup:/backup:rw \
   --entrypoint "uv run /app/openrag/scripts/restore.py /backup/test.openrag"\
   openrag
