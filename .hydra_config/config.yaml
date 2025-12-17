@@ -1,6 +1,6 @@
 defaults:
   - _self_ # TODO: Silences the hydra version migration warning (PLEASE REVIEW FOR BREAKING CHANGES)
-  - chunker: ${oc.env:CHUNKER, recursive_splitter} # recursive_splitter, semantic_splitter, markdown_splitter
+  - chunker: ${oc.env:CHUNKER, recursive_splitter} # recursive_splitter
   - retriever: ${oc.env:RETRIEVER_TYPE, single} # single # multiQuery # hyde
   - rag: ChatBotRag
 
@@ -31,6 +31,7 @@ embedder:
   model_name: ${oc.env:EMBEDDER_MODEL_NAME, jinaai/jina-embeddings-v3}
   base_url: ${oc.env:EMBEDDER_BASE_URL, http://vllm:8000/v1}
   api_key: ${oc.env:EMBEDDER_API_KEY, EMPTY}
+  max_model_len: ${oc.decode:${oc.env:MAX_MODEL_LEN, 8192}}
 
 vectordb:
   host: ${oc.env:VDB_HOST, milvus}
@@ -49,7 +50,7 @@ rdb:
 reranker:
   enable: ${oc.decode:${oc.env:RERANKER_ENABLED, true}}
   model_name: ${oc.env:RERANKER_MODEL, Alibaba-NLP/gte-multilingual-reranker-base}
-  top_k: ${oc.decode:${oc.env:RERANKER_TOP_K, 5}} # Number of documents to return after reranking. upgrade to 8 for better results if your llm has a wider context window
+  top_k: ${oc.decode:${oc.env:RERANKER_TOP_K, 10}} # Number of documents to return after reranking. Upgrade for better results if your llm has a wider context window.
   base_url: ${oc.env:RERANKER_BASE_URL, http://reranker:${oc.env:RERANKER_PORT, 7997}}
 
 map_reduce:

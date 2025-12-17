@@ -32,10 +32,13 @@ class ABCRetriever(ABC):
 
 # Define the Simple Retriever class
 class BaseRetriever(ABCRetriever):
-    def __init__(self, top_k=6, similarity_threshold=0.95, **kwargs):
+    def __init__(
+        self, top_k=6, similarity_threshold=0.95, with_surrounding_chunks=True, **kwargs
+    ):
         super().__init__(top_k, similarity_threshold, **kwargs)
         self.top_k = top_k
         self.similarity_threshold = similarity_threshold
+        self.with_surrounding_chunks = with_surrounding_chunks
 
     async def retrieve(
         self,
@@ -48,11 +51,12 @@ class BaseRetriever(ABCRetriever):
             partition=partition,
             top_k=self.top_k,
             similarity_threshold=self.similarity_threshold,
+            with_surrounding_chunks=self.with_surrounding_chunks,
         )
         return chunks
 
 
-class SingleRetreiver(BaseRetriever):
+class SingleRetriever(BaseRetriever):
     pass
 
 
@@ -93,6 +97,7 @@ class MultiQueryRetriever(BaseRetriever):
             partition=partition,
             top_k_per_query=self.top_k,
             similarity_threshold=self.similarity_threshold,
+            with_surrounding_chunks=self.with_surrounding_chunks,
         )
         return chunks
 
@@ -133,12 +138,13 @@ class HyDeRetriever(BaseRetriever):
             partition=partition,
             top_k_per_query=self.top_k,
             similarity_threshold=self.similarity_threshold,
+            with_surrounding_chunks=self.with_surrounding_chunks,
         )
 
 
 class RetrieverFactory:
     RETRIEVERS = {
-        "single": BaseRetriever,
+        "single": SingleRetriever,
         "multiQuery": MultiQueryRetriever,
         "hyde": HyDeRetriever,
     }
@@ -150,7 +156,7 @@ class RetrieverFactory:
         retriever_type = retreiverConfig.pop("type")
         retriever_cls = RetrieverFactory.RETRIEVERS.get(retriever_type, None)
 
-        if retriever_type is None:
+        if retriever_cls is None:
             raise ValueError(f"Unknown retriever type: {retriever_type}")
 
         retreiverConfig["llm"] = ChatOpenAI(**config.llm)

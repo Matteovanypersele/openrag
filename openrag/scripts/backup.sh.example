@@ -3,7 +3,7 @@
 OUTPUT_DIR=$1
 PARTITION_NAME=$2
 
-docker compose \
+docker compose --env-file .env \
     run \
     --build \
     --rm \

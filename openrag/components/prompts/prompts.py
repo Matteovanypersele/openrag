@@ -12,7 +12,7 @@ def load_prompt(
     prompt_name: str,
     prompts_dir: Path = prompts_dir,
     prompt_mapping: dict = prompt_mapping,
-) -> tuple[str, str]:
+) -> str:
     file_name = prompt_mapping.get(prompt_name, None)
     if not file_name:
         raise ValueError(f"No associated file name found for prompt: `{prompt_name}`")
@@ -30,7 +30,7 @@ def load_prompt(
 # Load prompts
 SYS_PROMPT_TMPLT = load_prompt("sys_prompt")
 QUERY_CONTEXTUALIZER_PROMPT = load_prompt("query_contextualizer")
-CHUNK_CONTEXTUALIZER = load_prompt("chunk_contextualizer")
+CHUNK_CONTEXTUALIZER_PROMPT = load_prompt("chunk_contextualizer")
 IMAGE_DESCRIBER = load_prompt("image_describer")
 
 # Retrievers prompts

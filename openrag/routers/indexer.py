@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import ray
-from components.files import save_file_to_disk
+from components.files import sanitize_filename, save_file_to_disk
 from config import load_config
 from fastapi import (
     APIRouter,
@@ -127,6 +127,8 @@ async def add_file(
 
     save_dir = Path(DATA_DIR)
     try:
+        original_filename = file.filename
+        file.filename = sanitize_filename(file.filename)
         file_path = await save_file_to_disk(file, save_dir, with_random_prefix=True)
     except Exception as e:
         log.exception("Failed to save file to disk.", error=str(e))
@@ -135,7 +137,13 @@ async def add_file(
             detail=str(e),
         )
 
-    metadata.update({"source": str(file_path), "filename": file.filename})
+    metadata.update(
+        {
+            "source": str(file_path),
+            "filename": file.filename,
+            "original_filename": original_filename,
+        }
+    )
     file_stat = Path(file_path).stat()
 
     # Append extra metadata
@@ -239,20 +247,25 @@ async def put_file(
     await indexer.delete_file.remote(file_id, partition)
 
     save_dir = Path(DATA_DIR)
-    save_dir.mkdir(parents=True, exist_ok=True)
-    file_path = save_dir / Path(file.filename).name
-    metadata.update({"source": str(file_path), "filename": file.filename})
-
     try:
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-        log.info("File saved to disk.")
+        original_filename = file.filename
+        file.filename = sanitize_filename(file.filename)
+        file_path = await save_file_to_disk(file, save_dir, with_random_prefix=True)
     except Exception:
         log.exception("Failed to save file to disk.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save uploaded file.",
         )
+
+    metadata.update(
+        {
+            "source": str(file_path),
+            "filename": file.filename,
+            "original_filename": original_filename,
+        }
+    )
+
     file_stat = Path(file_path).stat()
 
     # Append extra metadata
