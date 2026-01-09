@@ -275,6 +275,45 @@ class Indexer:
             filter=filter,
         )
 
+    @ray.method(concurrency_group="search")
+    async def acomplete_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        similarity_threshold: float = 0.80,
+        partition: Optional[Union[str, List[str]]] = None,
+        filter: Optional[Dict] = {},
+    ) -> List[Document]:
+        """Search with reranking for improved relevance."""
+        partition_list = self._check_partition_list(partition)
+        vectordb = ray.get_actor("Vectordb", namespace="openrag")
+
+        # 1. Initial vector search with more candidates for reranker
+        candidate_docs: List[Document] = await vectordb.async_search.remote(
+            query=query,
+            partition=partition_list,
+            top_k=top_k * 10,
+            similarity_threshold=similarity_threshold,
+            filter=filter,
+        )
+
+        if not candidate_docs:
+            return []
+
+        # 2. Lazy load reranker
+        if not hasattr(self, "reranker") or self.reranker is None:
+            from ..reranker import Reranker
+
+            self.reranker = Reranker(self.logger, self.config)
+
+        # 3. Rerank and return top_k results
+        reranked_docs: List[Document] = await self.reranker.rerank(
+            query=query,
+            documents=candidate_docs,
+            top_k=top_k,
+        )
+        return reranked_docs
+
     def _check_partition_str(self, partition: Optional[str]) -> str:
         if partition is None:
             self.logger.warning("partition not provided; using default.")

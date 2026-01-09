@@ -112,3 +112,110 @@ async def search_file(
     return JSONResponse(
         status_code=status.HTTP_200_OK, content={"documents": documents}
     )
+
+
+# Complete search endpoints (with reranking)
+
+
+@router.get("/withreranking")
+async def complete_search_multiple_partitions(
+    request: Request,
+    partitions: Optional[List[str]] = Query(
+        default=["all"], description="List of partitions to search"
+    ),
+    text: str = Query(..., description="Text to search semantically"),
+    top_k: int = Query(5, description="Number of top results to return"),
+    indexer=Depends(get_indexer),
+    partition_viewer=Depends(require_partitions_viewer),
+    user_partitions=Depends(current_user_or_admin_partitions_list),
+):
+    """Search with reranking for improved relevance."""
+    if partitions == ["all"]:
+        partitions = user_partitions
+
+    log = logger.bind(partitions=partitions, query=text, top_k=top_k)
+
+    results = await indexer.acomplete_search.remote(
+        query=text, top_k=top_k, partition=partitions
+    )
+    log.info(
+        "Complete search on multiple partitions completed.",
+        result_count=len(results),
+    )
+
+    documents = [
+        {
+            "link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"])),
+            "metadata": doc.metadata,
+            "content": doc.page_content,
+        }
+        for doc in results
+    ]
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"documents": documents}
+    )
+
+
+@router.get("/withreranking/partition/{partition}")
+async def complete_search_one_partition(
+    request: Request,
+    partition: str,
+    text: str = Query(..., description="Text to search semantically"),
+    top_k: int = Query(5, description="Number of top results to return"),
+    indexer=Depends(get_indexer),
+    partition_viewer=Depends(require_partition_viewer),
+):
+    """Search with reranking for improved relevance."""
+    log = logger.bind(partition=partition, query=text, top_k=top_k)
+    results = await indexer.acomplete_search.remote(
+        query=text, top_k=top_k, partition=partition
+    )
+    log.info(
+        "Complete search on single partition completed.", result_count=len(results)
+    )
+    documents = [
+        {
+            "link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"])),
+            "metadata": doc.metadata,
+            "content": doc.page_content,
+        }
+        for doc in results
+    ]
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"documents": documents}
+    )
+
+
+@router.get("/withreranking/partition/{partition}/file/{file_id}")
+async def complete_search_file(
+    request: Request,
+    partition: str,
+    file_id: str,
+    text: str = Query(..., description="Text to search semantically"),
+    top_k: int = Query(5, description="Number of top results to return"),
+    indexer=Depends(get_indexer),
+    partition_viewer=Depends(require_partition_viewer),
+):
+    """Search with reranking for improved relevance."""
+    log = logger.bind(partition=partition, file_id=file_id, query=text, top_k=top_k)
+    results = await indexer.acomplete_search.remote(
+        query=text, top_k=top_k, partition=partition, filter={"file_id": file_id}
+    )
+    log.info(
+        "Complete search on specific file completed.", result_count=len(results)
+    )
+
+    documents = [
+        {
+            "link": str(request.url_for("get_extract", extract_id=doc.metadata["_id"])),
+            "metadata": doc.metadata,
+            "content": doc.page_content,
+        }
+        for doc in results
+    ]
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"documents": documents}
+    )
