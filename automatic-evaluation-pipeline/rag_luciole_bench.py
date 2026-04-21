@@ -47,6 +47,7 @@ import json
 import os
 import re
 from collections import Counter
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote
@@ -212,7 +213,7 @@ def build_inference_messages(question: str, context: str, language: str) -> list
     ]
 
 
-def build_openrag_query_messages(question: str, language: str) -> list[dict]:
+def build_openrag_query_messages(question: str) -> list[dict]:
     return [
         {"role": "user", "content": question},
     ]
@@ -692,7 +693,7 @@ async def call_judge(
     return None
 
 
-# ── inference ─────────────────────────────────────────────────────��─
+# ── inference ──────────────────────────────────────────────────────
 
 
 def _get_context_string(row: dict) -> str:
@@ -761,7 +762,7 @@ async def infer_single_openrag(
     max_tokens: int = 2048,
     temperature: float = 0.1,
 ) -> str | None:
-    messages = build_openrag_query_messages(row["question"], language)
+    messages = build_openrag_query_messages(row["question"])
     payload = {
         "model": model,
         "messages": messages,
@@ -798,7 +799,7 @@ async def run_inference(
     model: str,
     language: str,
     concurrency: int = 10,
-    cache_writer: "Callable[[str, str], None] | None" = None,
+    cache_writer: Callable[[str, str], None] | None = None,
 ) -> list[str | None]:
     """Run inference on all rows with progress tracking (preserves order).
 
@@ -836,7 +837,7 @@ async def run_inference_openrag(
     model: str,
     language: str,
     concurrency: int = 10,
-    cache_writer: "Callable[[str, str], None] | None" = None,
+    cache_writer: Callable[[str, str], None] | None = None,
 ) -> list[str | None]:
     semaphore = asyncio.Semaphore(concurrency)
     results: list[str | None] = [None] * len(rows)
@@ -986,7 +987,7 @@ async def index_openrag_partition(
         )
 
 
-# ── augmented-format adapter ───────────��────────────────────────────
+# ── augmented-format adapter ───────────────────────────────────────
 
 
 def _parse_chunks_from_context_string(context: str, gold_titles: list[str]) -> list[dict]:
@@ -1064,6 +1065,7 @@ def adapt_chat_row(row: dict, idx: int) -> dict:
         "chunks": chunks,
         "context": context,
         "supporting_facts_titles": list(gold_titles),
+        "is_unanswerable": len(gold_titles) == 0,
     }
 
 
@@ -1414,6 +1416,9 @@ async def main() -> None:
     )
     parser.add_argument("--output", default=None, help="Per-row results JSONL")
     parser.add_argument("--report", default=None, help="Aggregate report JSON")
+    parser.add_argument("--responses-cache", default=None,
+                        help="Append {id, response} JSONL as each inference completes, "
+                             "so a crash mid-run can be resumed via --responses.")
     parser.add_argument("--generate", action="store_true",
                         help="Run inference to generate responses before evaluating")
     parser.add_argument("--llm-judge", action="store_true",
@@ -1503,25 +1508,45 @@ async def main() -> None:
                 responses[row["id"]] = row.get("response", "")
         mode = "separate file"
     elif args.generate:
-        if args.openrag_query:
-            model_name = f"openrag-{args.partition}"
-            chat_url = f"{openrag_base_url}/v1/chat/completions"
-            print(f"Running OpenRAG inference: {model_name} @ {chat_url}")
-            traces = await run_inference_openrag(
-                ordered_rows,
-                api_url=chat_url,
-                api_key=openrag_token,
-                model=model_name,
-                language=args.language,
-                concurrency=args.concurrency,
-            )
-        else:
-            print(f"Running inference: {gen_model} @ {gen_api_url}")
-            traces = await run_inference(
-                ordered_rows,
-                api_url=gen_api_url, api_key=gen_api_key, model=gen_model,
-                language=args.language, concurrency=args.concurrency,
-            )
+        cache_file = None
+        cache_writer: Callable[[str, str], None] | None = None
+        if args.responses_cache:
+            cache_file = open(args.responses_cache, "a", encoding="utf-8")
+
+            def cache_writer(rid: str, response: str) -> None:
+                cache_file.write(
+                    json.dumps({"id": rid, "response": response}, ensure_ascii=False) + "\n"
+                )
+                cache_file.flush()
+
+            print(f"Streaming responses to cache: {args.responses_cache}")
+
+        try:
+            if args.openrag_query:
+                model_name = f"openrag-{args.partition}"
+                chat_url = f"{openrag_base_url}/v1/chat/completions"
+                print(f"Running OpenRAG inference: {model_name} @ {chat_url}")
+                traces = await run_inference_openrag(
+                    ordered_rows,
+                    api_url=chat_url,
+                    api_key=openrag_token,
+                    model=model_name,
+                    language=args.language,
+                    concurrency=args.concurrency,
+                    cache_writer=cache_writer,
+                )
+            else:
+                print(f"Running inference: {gen_model} @ {gen_api_url}")
+                traces = await run_inference(
+                    ordered_rows,
+                    api_url=gen_api_url, api_key=gen_api_key, model=gen_model,
+                    language=args.language, concurrency=args.concurrency,
+                    cache_writer=cache_writer,
+                )
+        finally:
+            if cache_file is not None:
+                cache_file.close()
+
         failed = 0
         for rid, trace in zip(ordered_ids, traces):
             if trace is not None:
