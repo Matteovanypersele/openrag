@@ -96,9 +96,7 @@ class RagPipeline:
                 params = dict(self.config.llm_params)
                 params.pop("max_retries")
                 params["max_completion_tokens"] = self.max_contextualized_query_len
-                params["extra_body"] = {
-                    "chat_template_kwargs": {"enable_thinking": False}
-                }
+                # params["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
 
                 response = await self.contextualizer.chat.completions.create(
                     model=self.config.llm["model"],
