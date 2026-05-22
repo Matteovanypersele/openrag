@@ -17,7 +17,7 @@ x-openrag: &openrag_template
     - ./logs:/app/logs # For dev mode
   ports:
     - ${APP_PORT:-8080}:${APP_iPORT:-8080}
-    - ${RAY_DASHBOARD_PORT:-8265}:8265 # Disable when in cluster mode
+    - 127.0.0.1:${RAY_DASHBOARD_PORT:-8265}:8265 # Only accessible via the authenticated nginx proxy (extern/ray-dashboard-auth)
   networks:
     default:
       aliases:
@@ -101,6 +101,7 @@ services:
         condition: service_healthy
       vllm-cpu:
         condition: service_healthy
+        required: false
 
   rdb:
     image: postgres:15
@@ -146,4 +147,4 @@ services:
     # for aarch64 yet. On aarch64 max-num-batched-tokens must be equal max-model-len for now (without chunked prefill).
     # For details see https://github.com/vllm-project/vllm/issues/21179
     profiles:
-      - 'cpu'
+      - 'cpu-local'
